@@ -29,6 +29,6 @@ docker run -ti --rm -p 8123:8123 ghcr.io/duckheads/quackpy:latest
 
 ###### :black_joker: Disclaimers 
 
-[^1]: DuckDB ® is a trademark of DuckDB Foundation. All rights reserved by their respective owners.
-[^2]: ClickHouse ® is a trademark of ClickHouse Inc. No direct affiliation or endorsement.
-[^3]: Released under the MIT license. See LICENSE for details. All rights reserved by their respective owners.
+[^1]: DuckDB ® is a trademark of DuckDB Foundation. All rights reserved by their respective owners. [^1]
+[^2]: ClickHouse ® is a trademark of ClickHouse Inc. No direct affiliation or endorsement. [^2]
+[^3]: Released under the MIT license. See LICENSE for details. All rights reserved by their respective owners. [^3]
