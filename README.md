@@ -21,12 +21,12 @@ Play with DuckDB SQL and Cloud storage though a familiar API, without giving up 
 <br>
 
 ### :seedling: Get Started
-Run using [docker](https://github.com/duckheads/quackpy/pkgs/container/quackpy) or build from source
+Run using [docker](https://github.com/quackscience/quackpy/pkgs/container/quackpy) or build from source
 
 #### 🐋 Using Docker
 ```bash
-docker pull ghcr.io/duckheads/quackpy:latest
-docker run -ti --rm -p 8123:8123 ghcr.io/duckheads/quackpy:latest
+docker pull ghcr.io/quackscience/quackpy:latest
+docker run -ti --rm -p 8123:8123 ghcr.io/quackscience/quackpy:latest
 ```
 
 
