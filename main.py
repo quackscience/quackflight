@@ -79,16 +79,15 @@ def convert_to_clickhouse_json(result, query_time):
 
     meta = [{"name": col[0], "type": col[1]} for col in columns]
 
-    data_dict = {col[0]: [] for col in columns}
+    data_list = []
     for row in data:
-        for i, value in enumerate(row):
-            data_dict[columns[i][0]].append(value)
+        row_dict = {columns[i][0]: row[i] for i in range(len(columns))}
+        data_list.append(row_dict)
 
     json_result = {
         "meta": meta,
-        "data": data_dict,
+        "data": data_list,
         "rows": len(data),
-        "rows_before_limit_at_least": len(data),
         "statistics": {
             "elapsed": query_time,
             "rows_read": len(data),
