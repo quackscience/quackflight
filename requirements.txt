@@ -1,3 +1,5 @@
 Flask
 flask_httpauth
+flask-cors
+cachetools
 duckdb

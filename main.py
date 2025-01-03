@@ -1,4 +1,5 @@
 import os
+import re
 import duckdb
 import json
 import time
@@ -8,10 +9,17 @@ import base64
 
 from flask import Flask, request, jsonify
 from flask_httpauth import HTTPBasicAuth
+from flask_cors import CORS
+from cachetools import LRUCache
 
 app = Flask(__name__, static_folder="public", static_url_path="")
 auth = HTTPBasicAuth()
+CORS(app)
 
+# Initialize LRU Cache
+cache = LRUCache(maxsize=10)
+
+# Default path for temp databases
 dbpath = os.getenv('DBPATH', '/tmp/')
 
 # Global connection
@@ -65,6 +73,44 @@ def convert_to_clickhouse_jsoncompact(result, query_time):
 
     return json.dumps(json_result)
 
+def convert_to_clickhouse_json(result, query_time):
+    columns = result.description
+    data = result.fetchall()
+
+    meta = [{"name": col[0], "type": col[1]} for col in columns]
+
+    data_list = []
+    for row in data:
+        row_dict = {columns[i][0]: row[i] for i in range(len(columns))}
+        data_list.append(row_dict)
+
+    json_result = {
+        "meta": meta,
+        "data": data_list,
+        "rows": len(data),
+        "statistics": {
+            "elapsed": query_time,
+            "rows_read": len(data),
+            "bytes_read": sum(len(str(item)) for row in data for item in row)
+        }
+    }
+
+    return json.dumps(json_result)
+
+def convert_to_csv_tsv(result, delimiter=','):
+    columns = result.description
+    data = result.fetchall()
+
+    lines = []
+    header = delimiter.join([col[0] for col in columns])
+    lines.append(header)
+
+    for row in data:
+        line = delimiter.join([str(item) for item in row])
+        lines.append(line)
+
+    return '\n'.join(lines).encode()
+
 def handle_insert_query(query, format, data=None):
     table_name = query.split("INTO")[1].split()[0].strip()
 
@@ -90,10 +136,8 @@ def save_to_tempfile(data):
     temp_file.close()
     return temp_file.name
 
-
-def duckdb_query_with_errmsg(query, format, data=None, request_method="GET"):
+def duckdb_query_with_errmsg(query, format='JSONCompact', data=None, request_method="GET"):
     try:
-
         if request_method == "POST" and query.strip().lower().startswith('insert into') and data:
             return handle_insert_query(query, format, data)
 
@@ -103,10 +147,14 @@ def duckdb_query_with_errmsg(query, format, data=None, request_method="GET"):
 
         if format.lower() == 'jsoncompact':
             output = convert_to_clickhouse_jsoncompact(result, query_time)
+        elif format.lower() == 'json':
+            output = convert_to_clickhouse_json(result, query_time)
         elif format.lower() == 'jsoneachrow':
             output = convert_to_ndjson(result)
         elif format.lower() == 'tsv':
-            output = result.df().to_csv(sep='\t', index=False)
+            output = convert_to_csv_tsv(result, delimiter='\t')
+        elif format.lower() == 'csv':
+            output = convert_to_csv_tsv(result, delimiter=',')
         else:
             output = result.fetchall()
 
@@ -118,17 +166,36 @@ def duckdb_query_with_errmsg(query, format, data=None, request_method="GET"):
     except Exception as e:
         return b"", str(e).encode()
 
+def sanitize_query(query):
+    pattern = re.compile(r"(?i)\s*FORMAT\s+(\w+)\s*")
+    match = re.search(pattern, query)
+    if match:
+        format_value = match.group(1).lower()
+        query = re.sub(pattern, ' ', query).strip()
+        return query, format_value.lower()
+    return query, None
+    
+    
 @app.route('/', methods=["GET", "HEAD"])
 @auth.login_required
 def clickhouse():
     query = request.args.get('query', default="", type=str)
     format = request.args.get('default_format', default="JSONCompact", type=str)
     database = request.args.get('database', default="", type=str)
+    query_id = request.args.get('query_id', default=None, type=str)
     data = None
+
+    query, sanitized_format = sanitize_query(query)
+    if sanitized_format:
+        format = sanitized_format
 
     # Log incoming request data for debugging
     print(f"Received request: method={request.method}, query={query}, format={format}, database={database}")
 
+    if query_id is not None and not query:
+        if query_id in cache:
+            return cache[query_id], 200
+    
     if not query:
         return app.send_static_file('play.html')
 
@@ -140,6 +207,10 @@ def clickhouse():
 
     # Execute the query and capture the result and error message
     result, errmsg = duckdb_query_with_errmsg(query.strip(), format, data, request.method)
+    
+    # Cache the result if query_id is provided
+    if query_id and len(errmsg) == 0:
+        cache[query_id] = result
 
     # Handle response for HEAD requests
     if len(errmsg) == 0:
@@ -171,6 +242,11 @@ def play():
     body = request.get_data() or None
     format = request.args.get('default_format', default="JSONCompact", type=str)
     database = request.args.get('database', default="", type=str)
+    query_id = request.args.get('query_id', default=None, type=str)
+
+    if query_id is not None and not query:
+        if query_id in cache:
+            return cache[query_id], 200
 
     if query is None:
         query = ""
@@ -184,6 +260,12 @@ def play():
 
     if database:
         query = f"ATTACH '{database}' AS db; USE db; {query}"
+
+    query, sanitized_format = sanitize_query(query)
+    if sanitized_format:
+        format = sanitized_format
+
+    print("DEBUG POST", query, format)
 
     result, errmsg = duckdb_query_with_errmsg(query.strip(), format)
     if len(errmsg) == 0:
