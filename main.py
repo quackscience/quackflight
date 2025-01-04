@@ -12,6 +12,8 @@ from flask_httpauth import HTTPBasicAuth
 from flask_cors import CORS
 from cachetools import LRUCache
 
+# Force Self-Service for UI
+os.environ['VITE_SELFSERVICE'] = 'true'
 # Default path for temp databases
 dbpath = os.getenv('DBPATH', '/tmp/')
 # Check for custom UI path
