@@ -232,7 +232,7 @@ def play():
 
 @app.route('/play', methods=["GET"])
 def handle_play():
-    return app.send_static_file('play.html')
+    return app.send_static_file('index.html')
 
 @app.route('/ping', methods=["GET"])
 def handle_ping():
@@ -240,7 +240,7 @@ def handle_ping():
 
 @app.errorhandler(404)
 def handle_404(e):
-    return app.send_static_file('play.html')
+    return app.send_static_file('index.html')
 
 host = os.getenv('HOST', '0.0.0.0')
 port = os.getenv('PORT', 8123)
