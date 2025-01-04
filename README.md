@@ -1,4 +1,6 @@
-<a href="https://quackpipe.fly.dev" target="_blank"><img src="https://user-images.githubusercontent.com/1423657/231310060-aae46ee6-c748-44c9-905e-20a4eba0a814.png" width=220 /></a>
+<a href="https://quackpipe.fly.dev" target="_blank"><img src="https://github.com/user-attachments/assets/3223f0dd-78e2-4b61-8690-5502a2290421" width=220 /></a>
+
+
 
 > _a pipe for quackheads_
 
