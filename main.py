@@ -175,7 +175,7 @@ def clickhouse():
         if query_id in cache:
             return cache[query_id], 200
     if not query:
-        return app.send_static_file('play.html')
+        return app.send_static_file('index.html')
     if request.method == "POST":
         data = request.get_data(as_text=True)
     if database:
