@@ -31,14 +31,20 @@ CORS(app)
 cache = LRUCache(maxsize=10)
 
 # Global connection
-conn = None
+conn = duckdb.connect(':memory:')
+conn.install_extension("chsql", repository="community")
+conn.install_extension("chsql_native", repository="community")
+conn.load_extension("chsql")
+conn.load_extension("chsql_native")
+# conn = None
 
 @auth.verify_password
 def verify(username, password):
     global conn
     if not (username and password):
         print('stateless session')
-        conn = duckdb.connect(':memory:')
+        # conn = duckdb.connect(':memory:')
+
     else:
         global path
         os.makedirs(path, exist_ok=True)
@@ -46,6 +52,8 @@ def verify(username, password):
         db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
         print(f'stateful session {db_file}')
         conn = duckdb.connect(db_file)
+        con.load_extension("chsql")
+        con.load_extension("chsql_native")
     return True
 
 def convert_to_ndjson(result):
