@@ -13,7 +13,9 @@ _QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arr
 > - Powerful Arrow Flight API for modern data clients
 > - Unlocked Concurrent inserts and querying on DuckDB
 > - Persistent storage using w/ multiuser authentication
+> - Native access to any DuckDB Extension & Format
 > - Embedded SQL Query Interface for instant usage
+
 
 <br>
 
@@ -89,6 +91,7 @@ quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://
 <br>
 
 
+<img src="https://github.com/user-attachments/assets/43dcbdf8-bc19-4419-a4b8-13956a6c3a2f" width=700>
 
 
 
