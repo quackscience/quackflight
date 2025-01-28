@@ -9,6 +9,15 @@ _QuackPy is a serverless OLAP API built on top of DuckDB emulating and aliasing 
 
 <br>
 
+### :seedling: Get Started
+Run using [docker](https://github.com/quackscience/quackpy/pkgs/container/quackpy) or build from source
+```bash
+docker pull ghcr.io/quackscience/quackpy:latest
+docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:latest
+```
+
+<br>
+
 ### 👉 Usage
 Quackpipe APIs execute queries in `:memory` unless _authentication_ details are provided for data persistence.
 
@@ -50,20 +59,12 @@ print(data_frame.to_markdown())
 ```
 
 ### :seedling: User-Interface
-quackpy ships with the quack user-interface to execute SQL queries
+quackpy ships with the quack user-interface to execute DuckDB SQL queries
 
 ![Quack-UI-Workspace-ezgif com-crop](https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602)
 
 <br>
 
-### :seedling: Get Started
-Run using [docker](https://github.com/quackscience/quackpy/pkgs/container/quackpy) or build from source
-
-#### 🐋 Using Docker
-```bash
-docker pull ghcr.io/quackscience/quackpy:latest
-docker run -ti --rm -p 8123:8123 ghcr.io/quackscience/quackpy:latest
-```
 
 
 
