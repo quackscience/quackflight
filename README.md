@@ -24,7 +24,7 @@ Quackpipe APIs execute queries in `:memory` unless _authentication_ details are 
 #### HTTP API
 Execute DuckDB queries using the HTTP POST/GET API
 ```bash
-curl -X POST http://localhost:8123 
+curl -X POST http://user:persistence@localhost:8123 
    -H "Content-Type: application/json"
    -d 'SELECT version()'  
 ```
