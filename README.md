@@ -7,6 +7,10 @@
 
 _QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Flight SQL client interfaces_
 
+- Persistent storage using DuckDB w/ authentication
+- High-performance transfers with Arrow Flight
+- Concurrent inserts and querying on DuckDB files
+
 <br>
 
 ### :seedling: Get Started
@@ -77,3 +81,4 @@ quackpy ships with the quack user-interface to execute DuckDB SQL queries
 [^1]: DuckDB ® is a trademark of DuckDB Foundation. All rights reserved by their respective owners. [^1]
 [^2]: ClickHouse ® is a trademark of ClickHouse Inc. No direct affiliation or endorsement. [^2]
 [^3]: Released under the MIT license. See LICENSE for details. All rights reserved by their respective owners. [^3]
+[^4]: Flight implementation inspired by [Duck Takes Flight](https://www.definite.app/blog/duck-takes-flight) [^4]
