@@ -77,8 +77,8 @@ print(data_frame.to_markdown())
 |  0 | v1.1.3        |
 ```
 
-### 📺 User-Interface
-quackpy ships with the quack user-interface to execute DuckDB SQL queries
+### 📺 SQL User-Interface
+quackpy ships with the quack user-interface to execute DuckDB SQL queries based on [ch-ui](https://github.com/caioricciuti/ch-ui)
 
 ![Quack-UI-Workspace-ezgif com-crop](https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602)
 
