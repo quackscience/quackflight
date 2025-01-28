@@ -17,4 +17,5 @@ RUN apt update && apt install -y binutils wget git \
 ADD main.py .
 COPY --from=build /app/dist ./public
 EXPOSE 8123
+EXPOSE 8815
 CMD ["python3","./main.py"]
