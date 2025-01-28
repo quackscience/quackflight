@@ -11,6 +11,42 @@ _QuackPy is a serverless OLAP API built on top of DuckDB emulating and aliasing 
 :hatched_chick: try a [sample s3/parquet query](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==) in our [miniature playground](https://quackpy.fly.dev) _(fly.io free tier, 1x-shared-vcpu, 256Mb)_ <br>
 :hatched_chick: launch your own _free instance_ on [fly.io](https://flyctl.sh/shell?repo=quackscience/quackpy)
 
+### 👉 API
+#### HTTP
+Execute queries using the HTTP POST/GET API
+```bash
+curl -X POST http://localhost:8123 
+   -H "Content-Type: application/json"
+   -d 'SELECT version()'  
+```
+#### Flight
+Execute queries using the _experimental_ Flight GRPC API
+
+```python
+from pyarrow.flight import FlightClient, Ticket, FlightCallOptions 
+import json
+import pandas
+import tabulate
+
+sql="""SELECT version()"""
+  
+flight_ticket = Ticket(sql)
+
+token = (b"authorization", bytes(f"user:password".encode('utf-8')))
+options = FlightCallOptions(headers=[token])
+client = FlightClient(f"grpc://localhost:8815")
+
+reader = client.do_get(flight_ticket, options)
+arrow_table = reader.read_all()
+# Use pyarrow and pandas to view and analyze data
+data_frame = arrow_table.to_pandas()
+print(data_frame.to_markdown())
+```
+```sql
+|    | "version"()   |
+|---:|:--------------|
+|  0 | v1.1.3        |
+```
 
 ### :seedling: User-Interface
 quackpy ships with the quack user-interface to execute SQL queries
