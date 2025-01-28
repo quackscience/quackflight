@@ -292,11 +292,14 @@ if __name__ == '__main__':
 
             def get_flight_info(self, context, descriptor):
                 """Implement 'get_flight_info' to provide information about the flight."""
-                query = descriptor.command.decode("utf-8")
-                result_table = self.conn.execute(query).fetch_arrow_table()
-                schema = result_table.schema
-                endpoints = [flight.FlightEndpoint(ticket=flight.Ticket(query.encode("utf-8")), locations=[self._location])]
-                return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+                if descriptor.command is not None:
+                    query = descriptor.command.decode("utf-8")
+                    result_table = self.conn.execute(query).fetch_arrow_table()
+                    schema = result_table.schema
+                    endpoints = [flight.FlightEndpoint(ticket=flight.Ticket(query.encode("utf-8")), locations=[self._location])]
+                    return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+                else:
+                    raise flight.FlightUnavailableError("No command provided in the descriptor.")
 
             def do_action(self, context, action):
                 """Handle custom actions like executing SQL queries."""
@@ -346,3 +349,4 @@ if __name__ == '__main__':
 
     flask_thread.join()
     flight_thread.join()
+
