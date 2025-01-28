@@ -1,4 +1,4 @@
-<a href="https://quackpipe.fly.dev" target="_blank"><img src="https://github.com/user-attachments/assets/3223f0dd-78e2-4b61-8690-5502a2290421" width=220 /></a>
+<a href="https://quackpy.fly.dev" target="_blank"><img src="https://github.com/user-attachments/assets/3223f0dd-78e2-4b61-8690-5502a2290421" width=220 /></a>
 
 > _a pipe for quackheads_
 
@@ -78,9 +78,11 @@ print(data_frame.to_markdown())
 ```
 
 ### 📺 SQL User-Interface
-quackpy ships with the quack user-interface to execute DuckDB SQL queries based on [ch-ui](https://github.com/caioricciuti/ch-ui)
+quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://github.com/caioricciuti/ch-ui)
 
-![Quack-UI-Workspace-ezgif com-crop](https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602)
+<a href="https://quackpy.fly.dev">
+  <img src="https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602">
+</a>
 
 <br>
 
