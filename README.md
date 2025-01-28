@@ -5,11 +5,13 @@
 # :baby_chick: [quackpy](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)pe
 
 
-_QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Flight SQL client interfaces_
+_QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL interfaces_
 
-- Persistent storage using DuckDB w/ authentication
-- High-performance transfers with Arrow Flight
-- Concurrent inserts and querying on DuckDB files
+
+> [!TIP]
+> - Persistent storage using DuckDB w/ authentication
+> - Efficient data transfers with Arrow Flight
+> - Concurrent inserts and querying on DuckDB files
 
 <br>
 
@@ -20,10 +22,9 @@ docker pull ghcr.io/quackscience/quackpy:latest
 docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:latest
 ```
 
-<br>
-
 ### 👉 Usage
-Quackpipe APIs execute queries in `:memory:` unless _authentication_ details are provided for data persistence.
+> [!NOTE]
+> Quackpipe execute queries in `:memory:` unless _authentication_ details are provided for data persistence
 
 #### HTTP API
 Execute DuckDB queries using the HTTP POST/GET API _(compatible with the ClickHouse HTTP API)_
