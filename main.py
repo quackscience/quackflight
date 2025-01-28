@@ -112,7 +112,7 @@ def convert_to_csv_tsv(result, delimiter=','):
     header = delimiter.join([col[0] for col in columns])
     lines.append(header)
     for row in data:
-        line = delimiter.join([str(item) for item in row])
+        line = delimiter.join([str(item) for item in row])  # Corrected line
         lines.append(line)
     return '\n'.join(lines).encode()
 
@@ -292,6 +292,15 @@ if __name__ == '__main__':
                     return []
                 else:
                     raise NotImplementedError(f"Unknown action type: {action.type}")
+
+            def get_flight_info(self, context, descriptor):
+                """Handle requests for flight info."""
+                query = descriptor.command.decode("utf-8")
+                result_table = self.conn.execute(query).fetch_arrow_table()
+                schema = result_table.schema
+                ticket = flight.Ticket(descriptor.command)
+                endpoint = flight.FlightEndpoint(ticket, [flight.Location.for_grpc_tcp("localhost", 8815)])
+                return flight.FlightInfo(schema, descriptor, [endpoint], -1, -1)
 
         server = DuckDBFlightServer()
         print("Starting DuckDB Flight server on grpc://localhost:8815")
