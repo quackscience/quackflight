@@ -112,7 +112,7 @@ def convert_to_csv_tsv(result, delimiter=','):
     header = delimiter.join([col[0] for col in columns])
     lines.append(header)
     for row in data:
-        line = delimiter.join([str(item) for item in row])  # Corrected line
+        line = delimiter.join([str(item) for item in row])
         lines.append(line)
     return '\n'.join(lines).encode()
 
@@ -256,7 +256,9 @@ def handle_404(e):
     return app.send_static_file('index.html')
 
 host = os.getenv('HOST', '0.0.0.0')
-port = os.getenv('PORT', 8123)
+port = int(os.getenv('PORT', 8123))
+flight_host = os.getenv('FLIGHT_HOST', '0.0.0.0')
+flight_port = int(os.getenv('FLIGHT_PORT', 8815))
 path = os.getenv('DATA', '.duckdb_data')
 
 if __name__ == '__main__':
@@ -265,9 +267,10 @@ if __name__ == '__main__':
 
     def run_flight_server():
         class DuckDBFlightServer(flight.FlightServerBase):
-            def __init__(self, location="grpc://localhost:8815", db_path=":memory:"):
+            def __init__(self, location=f"grpc://{flight_host}:{flight_port}", db_path=":memory:"):
+                self._location = location
                 super().__init__(location)
-                self.conn = conn  # Use the same DuckDB instance
+                self.conn = duckdb.connect(db_path)  # Initialize connection
 
             def do_get(self, context, ticket):
                 """Handle 'GET' requests from clients to retrieve data."""
@@ -275,6 +278,9 @@ if __name__ == '__main__':
                 result_table = self.conn.execute(query).fetch_arrow_table()
                 # Convert to record batches with alignment
                 batches = result_table.to_batches(max_chunksize=1024)  # Use power of 2 for alignment
+                if not batches:
+                    schema = result_table.schema
+                    return flight.RecordBatchStream(pa.Table.from_batches([], schema))
                 return flight.RecordBatchStream(pa.Table.from_batches(batches))
 
             def do_put(self, context, descriptor, reader, writer):
@@ -283,6 +289,14 @@ if __name__ == '__main__':
                 table_name = descriptor.path[0].decode('utf-8')
                 self.conn.register("temp_table", table)
                 self.conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_table")
+
+            def get_flight_info(self, context, descriptor):
+                """Implement 'get_flight_info' to provide information about the flight."""
+                query = descriptor.command.decode("utf-8")
+                result_table = self.conn.execute(query).fetch_arrow_table()
+                schema = result_table.schema
+                endpoints = [flight.FlightEndpoint(ticket=flight.Ticket(query.encode("utf-8")), locations=[self._location])]
+                return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
 
             def do_action(self, context, action):
                 """Handle custom actions like executing SQL queries."""
@@ -293,17 +307,34 @@ if __name__ == '__main__':
                 else:
                     raise NotImplementedError(f"Unknown action type: {action.type}")
 
-            def get_flight_info(self, context, descriptor):
-                """Handle requests for flight info."""
-                query = descriptor.command.decode("utf-8")
-                result_table = self.conn.execute(query).fetch_arrow_table()
-                schema = result_table.schema
-                ticket = flight.Ticket(descriptor.command)
-                endpoint = flight.FlightEndpoint(ticket, [flight.Location.for_grpc_tcp("localhost", 8815)])
-                return flight.FlightInfo(schema, descriptor, [endpoint], -1, -1)
+            def apply_auth(self, context):
+                """Apply authentication based on the authorization header."""
+                metadata = context.method().call_metadata()
+                if metadata:
+                    for key, value in metadata:
+                        if key.lower() == 'authorization':
+                            auth_value = value.decode('utf-8')
+                            if ':' in auth_value:
+                                username, password = auth_value.split(':', 1)
+                            else:
+                                username, password = auth_value, ''
+                            if not (username and password):
+                                print('stateless flight session')
+                                return True
+                            else:
+                                print('stateful flight session')
+                                os.makedirs(path, exist_ok=True)
+                                user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                                db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                                print(f'stateful session {db_file}')
+                                self.conn = duckdb.connect(db_file)
+                                self.conn.load_extension("chsql")
+                                self.conn.load_extension("chsql_native")
+                                return True
+                return False
 
         server = DuckDBFlightServer()
-        print("Starting DuckDB Flight server on grpc://localhost:8815")
+        print(f"Starting DuckDB Flight server on {flight_host}:{flight_port}")
         server.serve()
 
     # Run both Flask and Flight Server in parallel
