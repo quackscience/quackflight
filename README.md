@@ -24,7 +24,7 @@ docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:lates
 
 ### 👉 Usage
 > [!NOTE]
-> Quackpipe execute queries in `:memory:` unless _authentication_ details are provided for data persistence
+> Quackpipe executes queries in `:memory:` unless _authentication_ details are provided for data persistence
 
 #### 🕸️ HTTP API
 Execute DuckDB queries using the HTTP POST/GET API _(compatible with the ClickHouse HTTP API)_
@@ -38,7 +38,7 @@ curl -X POST "http://user:persistence@localhost:8123" \
 Execute DuckDB queries using the _experimental_ Flight GRPC API
 
 > [!NOTE]
-> Quackpipe execute queries in `:memory:` unless an `authorization` header is provided for data persistence
+> Quackpipe executes queries in `:memory:` unless an `authorization` header is provided for data persistence
 
 
 ```sql
