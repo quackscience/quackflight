@@ -6,11 +6,14 @@ import time
 import tempfile
 import hashlib
 import base64
+import threading
 
 from flask import Flask, request, jsonify
 from flask_httpauth import HTTPBasicAuth
 from flask_cors import CORS
 from cachetools import LRUCache
+import pyarrow as pa
+import pyarrow.flight as flight
 
 # Force Self-Service for UI
 os.environ['VITE_SELFSERVICE'] = 'true'
@@ -52,8 +55,8 @@ def verify(username, password):
         db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
         print(f'stateful session {db_file}')
         conn = duckdb.connect(db_file)
-        con.load_extension("chsql")
-        con.load_extension("chsql_native")
+        conn.load_extension("chsql")
+        conn.load_extension("chsql_native")
     return True
 
 def convert_to_ndjson(result):
@@ -257,4 +260,49 @@ port = os.getenv('PORT', 8123)
 path = os.getenv('DATA', '.duckdb_data')
 
 if __name__ == '__main__':
-    app.run(host=host, port=port)
+    def run_flask():
+        app.run(host=host, port=port)
+
+    def run_flight_server():
+        class DuckDBFlightServer(flight.FlightServerBase):
+            def __init__(self, location="grpc://localhost:8815", db_path=":memory:"):
+                super().__init__(location)
+                self.conn = conn  # Use the same DuckDB instance
+
+            def do_get(self, context, ticket):
+                """Handle 'GET' requests from clients to retrieve data."""
+                query = ticket.ticket.decode("utf-8")
+                result_table = self.conn.execute(query).fetch_arrow_table()
+                # Convert to record batches with alignment
+                batches = result_table.to_batches(max_chunksize=1024)  # Use power of 2 for alignment
+                return flight.RecordBatchStream(pa.Table.from_batches(batches))
+
+            def do_put(self, context, descriptor, reader, writer):
+                """Handle 'PUT' requests to upload data to the DuckDB instance."""
+                table = reader.read_all()
+                table_name = descriptor.path[0].decode('utf-8')
+                self.conn.register("temp_table", table)
+                self.conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_table")
+
+            def do_action(self, context, action):
+                """Handle custom actions like executing SQL queries."""
+                if action.type == "query":
+                    query = action.body.to_pybytes().decode("utf-8")
+                    self.conn.execute(query)
+                    return []
+                else:
+                    raise NotImplementedError(f"Unknown action type: {action.type}")
+
+        server = DuckDBFlightServer()
+        print("Starting DuckDB Flight server on grpc://localhost:8815")
+        server.serve()
+
+    # Run both Flask and Flight Server in parallel
+    flask_thread = threading.Thread(target=run_flask)
+    flight_thread = threading.Thread(target=run_flight_server)
+
+    flask_thread.start()
+    flight_thread.start()
+
+    flask_thread.join()
+    flight_thread.join()
