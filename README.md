@@ -19,7 +19,7 @@ docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:lates
 <br>
 
 ### 👉 Usage
-Quackpipe APIs execute queries in `:memory` unless _authentication_ details are provided for data persistence.
+Quackpipe APIs execute queries in `:memory:` unless _authentication_ details are provided for data persistence.
 
 #### HTTP API
 Execute DuckDB queries using the HTTP POST/GET API
