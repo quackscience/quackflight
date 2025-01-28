@@ -10,6 +10,8 @@ _QuackPy is a serverless OLAP API built on top of DuckDB emulating and aliasing 
 <br>
 
 ### 👉 Usage
+Quackpipe APIs execute queries in `:memory` unless _authentication_ details are provided for data persistence.
+
 #### HTTP API
 Execute DuckDB queries using the HTTP POST/GET API
 ```bash
@@ -31,7 +33,7 @@ sql="""SELECT version()"""
   
 flight_ticket = Ticket(sql)
 
-token = (b"authorization", bytes(f"user:password".encode('utf-8')))
+token = (b"authorization", bytes(f"user:persistence".encode('utf-8')))
 options = FlightCallOptions(headers=[token])
 client = FlightClient(f"grpc://localhost:8815")
 
