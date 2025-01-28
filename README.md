@@ -37,6 +37,20 @@ curl -X POST http://user:persistence@localhost:8123
 #### FLIGHT API
 Execute DuckDB queries using the _experimental_ Flight GRPC API
 
+> [!NOTE]
+> Quackpipe execute queries in `:memory:` unless an `authorization` header is provided for data persistence
+
+
+```sql
+D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
+┌───────┐
+│   1   │
+│ int32 │
+├───────┤
+│   1   │
+└───────┘
+```
+
 ```python
 from pyarrow.flight import FlightClient, Ticket, FlightCallOptions 
 import json
