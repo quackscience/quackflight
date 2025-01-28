@@ -29,8 +29,8 @@ docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:lates
 #### HTTP API
 Execute DuckDB queries using the HTTP POST/GET API _(compatible with the ClickHouse HTTP API)_
 ```bash
-curl -X POST http://user:persistence@localhost:8123 
-   -H "Content-Type: application/json"
+curl -X POST "http://user:persistence@localhost:8123" \
+   -H "Content-Type: application/json" \
    -d 'SELECT version()'  
 ```
 
