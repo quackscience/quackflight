@@ -64,6 +64,7 @@ D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1
 │ show_databases                  │ [{'ticket': SHOW DATABASES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]   │
 │ show_version                    │ [{'ticket': SELECT version(), 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }] │
 └─────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
 D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 ┌─────────────┐
 │ "version"() │
