@@ -33,6 +33,7 @@ logger = logging.getLogger('server')
 # Global flag for server state
 running = True
 
+
 def signal_handler(signum, frame):
     """Handle shutdown signals"""
     global running
@@ -66,6 +67,7 @@ conn.load_extension("chsql")
 conn.load_extension("chsql_native")
 # conn = None
 
+
 @auth.verify_password
 def verify(username, password):
     global conn
@@ -76,13 +78,15 @@ def verify(username, password):
     else:
         global path
         os.makedirs(path, exist_ok=True)
-        user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+        user_pass_hash = hashlib.sha256(
+            (username + password).encode()).hexdigest()
         db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
         print(f'stateful session {db_file}')
         conn = duckdb.connect(db_file)
         conn.load_extension("chsql")
         conn.load_extension("chsql_native")
     return True
+
 
 def convert_to_ndjson(result):
     columns = result.description
@@ -92,6 +96,7 @@ def convert_to_ndjson(result):
         row_dict = {columns[i][0]: row[i] for i in range(len(columns))}
         ndjson_lines.append(json.dumps(row_dict))
     return '\n'.join(ndjson_lines).encode()
+
 
 def convert_to_clickhouse_jsoncompact(result, query_time):
     columns = result.description
@@ -109,6 +114,7 @@ def convert_to_clickhouse_jsoncompact(result, query_time):
         }
     }
     return json.dumps(json_result)
+
 
 def convert_to_clickhouse_json(result, query_time):
     columns = result.description
@@ -130,6 +136,7 @@ def convert_to_clickhouse_json(result, query_time):
     }
     return json.dumps(json_result)
 
+
 def convert_to_csv_tsv(result, delimiter=','):
     columns = result.description
     data = result.fetchall()
@@ -140,6 +147,7 @@ def convert_to_csv_tsv(result, delimiter=','):
         line = delimiter.join([str(item) for item in row])
         lines.append(line)
     return '\n'.join(lines).encode()
+
 
 def handle_insert_query(query, format, data=None):
     table_name = query.split("INTO")[1].split()[0].strip()
@@ -156,12 +164,15 @@ def handle_insert_query(query, format, data=None):
             os.remove(temp_file_name)
     return b"Ok", b""
 
+
 def save_to_tempfile(data):
-    temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w+', encoding='utf-8')
+    temp_file = tempfile.NamedTemporaryFile(
+        delete=False, mode='w+', encoding='utf-8')
     temp_file.write(data)
     temp_file.flush()
     temp_file.close()
     return temp_file.name
+
 
 def duckdb_query_with_errmsg(query, format='JSONCompact', data=None, request_method="GET"):
     try:
@@ -188,6 +199,7 @@ def duckdb_query_with_errmsg(query, format='JSONCompact', data=None, request_met
     except Exception as e:
         return b"", str(e).encode()
 
+
 def sanitize_query(query):
     pattern = re.compile(r"(?i)\s*FORMAT\s+(\w+)\s*")
     match = re.search(pattern, query)
@@ -197,18 +209,21 @@ def sanitize_query(query):
         return query, format_value.lower()
     return query, None
 
+
 @app.route('/', methods=["GET", "HEAD"])
 @auth.login_required
 def clickhouse():
     query = request.args.get('query', default="", type=str)
-    format = request.args.get('default_format', default="JSONCompact", type=str)
+    format = request.args.get(
+        'default_format', default="JSONCompact", type=str)
     database = request.args.get('database', default="", type=str)
     query_id = request.args.get('query_id', default=None, type=str)
     data = None
     query, sanitized_format = sanitize_query(query)
     if sanitized_format:
         format = sanitized_format
-    print(f"Received request: method={request.method}, query={query}, format={format}, database={database}")
+    print(
+        f"Received request: method={request.method}, query={query}, format={format}, database={database}")
     if query_id is not None and not query:
         if query_id in cache:
             return cache[query_id], 200
@@ -218,7 +233,8 @@ def clickhouse():
         data = request.get_data(as_text=True)
     if database:
         query = f"ATTACH '{database}' AS db; USE db; {query}"
-    result, errmsg = duckdb_query_with_errmsg(query.strip(), format, data, request.method)
+    result, errmsg = duckdb_query_with_errmsg(
+        query.strip(), format, data, request.method)
     if query_id and len(errmsg) == 0:
         cache[query_id] = result
     if len(errmsg) == 0:
@@ -226,7 +242,8 @@ def clickhouse():
             response = app.response_class(status=200)
             response.headers['Content-Type'] = 'application/json'
             response.headers['Accept-Ranges'] = 'bytes'
-            content_length = len(result) if isinstance(result, bytes) else len(result.decode())
+            content_length = len(result) if isinstance(
+                result, bytes) else len(result.decode())
             response.headers['Content-Length'] = content_length
             return response
         return result, 200
@@ -236,12 +253,14 @@ def clickhouse():
     print("Error occurred:", errmsg)
     return errmsg, 400
 
+
 @app.route('/', methods=["POST"])
 @auth.login_required
 def play():
     query = request.args.get('query', default=None, type=str)
     body = request.get_data() or None
-    format = request.args.get('default_format', default="JSONCompact", type=str)
+    format = request.args.get(
+        'default_format', default="JSONCompact", type=str)
     database = request.args.get('database', default="", type=str)
     query_id = request.args.get('query_id', default=None, type=str)
     if query_id is not None and not query:
@@ -268,17 +287,21 @@ def play():
         return result, 200
     return errmsg, 400
 
+
 @app.route('/play', methods=["GET"])
 def handle_play():
     return app.send_static_file('index.html')
+
 
 @app.route('/ping', methods=["GET"])
 def handle_ping():
     return "Ok", 200
 
+
 @app.errorhandler(404)
 def handle_404(e):
     return app.send_static_file('index.html')
+
 
 host = os.getenv('HOST', '0.0.0.0')
 port = int(os.getenv('PORT', 8123))
@@ -329,31 +352,49 @@ if __name__ == '__main__':
                 logger.info(f"Initializing Flight server at {location}")
                 self.conn = duckdb.connect(db_path)
                 self.conn.install_extension("chsql", repository="community")
-                self.conn.install_extension("chsql_native", repository="community")
+                self.conn.install_extension(
+                    "chsql_native", repository="community")
                 self.conn.load_extension("chsql")
                 self.conn.load_extension("chsql_native")
+                self.flights = [
+                    {
+                        "command": "show_databases",
+                        "ticket": flight.Ticket("SHOW DATABASES".encode("utf-8")),
+                        "location": [self._location],
+                        "schema": pa.schema([])
+                    },
+                    {
+                        "command": "show_version",
+                        "ticket": flight.Ticket("SELECT version()".encode("utf-8")),
+                        "location": [self._location],
+                        "schema": pa.schema([])
+                    }
+                ]
 
             def do_get(self, context, ticket):
                 """Handle 'GET' requests"""
                 logger.debug("do_get called")
-                
+
                 # Access middleware
                 try:
                     middleware = context.get_middleware("auth")
                     if middleware and middleware.authorization:
                         auth_header = middleware.authorization
-                        logger.info(f"Using authorization from middleware: {auth_header}")
-                        if isinstance(auth_header, str):  # Make sure we have a string
+                        logger.info(
+                            f"Using authorization from middleware: {auth_header}")
+                        if isinstance(auth_header, str):
                             username, password = auth_header.split(':', 1)
-                            user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
-                            db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                            user_pass_hash = hashlib.sha256(
+                                (username + password).encode()).hexdigest()
+                            db_file = os.path.join(
+                                dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
                             self.conn = duckdb.connect(db_file)
                             self.conn.load_extension("chsql")
                             self.conn.load_extension("chsql_native")
                 except Exception as e:
                     logger.debug(f"Middleware access error: {e}")
-                
+
                 query = ticket.ticket.decode("utf-8")
                 logger.info(f"Executing query: {query}")
                 try:
@@ -374,7 +415,8 @@ if __name__ == '__main__':
                 table = reader.read_all()
                 table_name = descriptor.path[0].decode('utf-8')
                 self.conn.register("temp_table", table)
-                self.conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_table")
+                self.conn.execute(
+                    f"INSERT INTO {table_name} SELECT * FROM temp_table")
 
             def get_flight_info(self, context, descriptor):
                 """Implement 'get_flight_info'"""
@@ -383,15 +425,51 @@ if __name__ == '__main__':
                     result_table = self.conn.execute(query).fetch_arrow_table()
                     schema = result_table.schema
                     endpoints = [flight.FlightEndpoint(
-                        ticket=flight.Ticket(query.encode("utf-8")), 
+                        ticket=flight.Ticket(query.encode("utf-8")),
                         locations=[self._location]
                     )]
                     return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+                elif descriptor.path is not None:
+                    for flight_info in self.flights:
+                        if descriptor.path[0].decode("utf-8") == flight_info["command"]:
+                            query = flight_info["ticket"].ticket.decode("utf-8")
+                            logger.info(f"Attempting flight with query: {query}")
+                            try:
+                                middleware = context.get_middleware("auth")
+                                result_table = self.conn.execute(query).fetch_arrow_table()
+                                schema = result_table.schema
+                                endpoints = [flight.FlightEndpoint(
+                                    ticket=flight.Ticket(query.encode("utf-8")),
+                                    locations=[self._location]
+                                )]
+                                return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+
+                            except Exception as e:
+                                logger.exception(f"Flight execution error: {str(e)}")
+                                raise flight.FlightUnavailableError("Failed taking off")
                 else:
-                    raise flight.FlightUnavailableError("No command provided in the descriptor")
+                    raise flight.FlightUnavailableError(
+                        "No command or path provided in the descriptor")
+
+            def list_flights(self, context, criteria):
+                """Implement 'list_flights'"""
+                logger.info("Listing available flights")
+                for flight_info in self.flights:
+                    yield flight.FlightInfo(
+                        flight_info["schema"],
+                        flight.FlightDescriptor.for_command(
+                            flight_info["command"]),
+                        [flight.FlightEndpoint(
+                            ticket=flight_info["ticket"],
+                            locations=flight_info["location"]
+                        )],
+                        -1,  # total_records
+                        -1   # total_bytes
+                    )
 
         server = DuckDBFlightServer()
-        logger.info(f"Starting DuckDB Flight server on {flight_host}:{flight_port}")
+        logger.info(
+            f"Starting DuckDB Flight server on {flight_host}:{flight_port}")
         server.serve()
 
     # Start Flask server in a daemon thread
