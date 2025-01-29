@@ -27,6 +27,9 @@ docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:lates
 ```
 
 ### 👉 Usage
+
+> See the [Examples](https://github.com/quackscience/quackpy/tree/main/examples) directory for quick starters
+
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless _authentication_ details are provided for data persistence
 
