@@ -42,7 +42,7 @@ curl -X POST "http://user:persistence@localhost:8123" \
 ```
 
 #### ✈️ FLIGHT API
-Execute DuckDB queries using the _experimental_ Flight GRPC API
+Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](https://github.com/Query-farm/duckdb-airport-extension)
 
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless an `authorization` header is provided for data persistence
