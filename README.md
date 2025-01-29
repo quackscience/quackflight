@@ -44,7 +44,7 @@ Execute DuckDB queries using the _experimental_ Flight GRPC API
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless an `authorization` header is provided for data persistence
 
-
+##### Custom Flight Ticket
 ```sql
 D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
 ┌───────┐
@@ -54,7 +54,26 @@ D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers
 │   1   │
 └───────┘
 ```
+##### Service Flight Ticket
+```sql
+D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1:8815', null);
+┌─────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│        flight_descriptor        │                                                    endpoint                                                    │
+│ union(cmd blob, path varchar[]) │           struct(ticket blob, "location" varchar[], expiration_time timestamp, app_metadata blob)[]            │
+├─────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ show_databases                  │ [{'ticket': SHOW DATABASES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]   │
+│ show_version                    │ [{'ticket': SELECT version(), 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }] │
+└─────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
+┌─────────────┐
+│ "version"() │
+│   varchar   │
+├─────────────┤
+│ v1.1.3      │
+└─────────────┘
+```
 
+##### Python Flight Client
 ```python
 from pyarrow.flight import FlightClient, Ticket, FlightCallOptions 
 import json
