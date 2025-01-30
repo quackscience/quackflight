@@ -111,6 +111,25 @@ quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://
   <img src="https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602">
 </a>
 
+```mermaid
+
+sequenceDiagram
+    participant Client
+    participant QuackPy
+    participant DuckDB
+
+
+    Client ->> QuackPy: ListFlights
+    QuackPy ->> Client: Return Flights Table
+    Client ->> QuackPy: GetFlightInfo
+    QuackPy ->> DuckDB: DuckDB Execute
+    DuckDB ->> QuackPy: Arrow Results Stream
+    QuackPy ->> Client: FlightInfo(ticket)
+    Client ->> QuackPy: do_get(ticket)
+    QuackPy ->> Client: Stream of Results
+
+```
+
 <br>
 
 
