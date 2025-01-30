@@ -8,7 +8,7 @@
 _QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL interfaces_
 
 
-> [!TIP]
+> [!IMPORTANT]
 > - Easy HTTP API with multiple formats _(JSON,CSV,Parquet)_
 > - Powerful Arrow Flight API for modern data clients
 > - Unlocked Concurrent inserts and querying on DuckDB
@@ -114,7 +114,7 @@ quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://
 <br>
 
 
-<img src="https://github.com/user-attachments/assets/43dcbdf8-bc19-4419-a4b8-13956a6c3a2f" width=700>
+<img src="https://private-user-images.githubusercontent.com/1423657/407925434-1945e6ec-11f3-48ce-b92e-e06481eb4421.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MzgxODkzMDQsIm5iZiI6MTczODE4OTAwNCwicGF0aCI6Ii8xNDIzNjU3LzQwNzkyNTQzNC0xOTQ1ZTZlYy0xMWYzLTQ4Y2UtYjkyZS1lMDY0ODFlYjQ0MjEucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDEyOSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTAxMjlUMjIxNjQ0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9ZTM3ZmQzZDY0NWQ4OTJiMzIxNzJiN2ZmMDEyNzgwM2Y2YTJjY2IzOGI4YjkyZWVlYmVlZGM0N2M0NDcxODYxZiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.u-9ywsscFXGEJM3UB_qrwz4K1cFRAhBtfHmY3Znjko8" width=600>
 
 
 
