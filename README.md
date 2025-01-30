@@ -47,7 +47,7 @@ Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](ht
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless an `authorization` header is provided for data persistence
 
-##### Custom Flight Ticket
+##### Take Custom Flights 
 ```sql
 D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
 ┌───────┐
@@ -57,7 +57,7 @@ D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers
 │   1   │
 └───────┘
 ```
-##### Service Flight Ticket
+##### Take Airport Flights
 ```sql
 D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1:8815', null);
 ┌─────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -77,7 +77,7 @@ D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 └─────────────┘
 ```
 
-##### Python Flight Client
+##### Take Python Flights
 ```python
 from pyarrow.flight import FlightClient, Ticket, FlightCallOptions 
 import json
