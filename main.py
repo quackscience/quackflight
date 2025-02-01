@@ -365,6 +365,12 @@ if __name__ == '__main__':
                         "schema": pa.schema([])
                     },
                     {
+                        "command": "show_tables",
+                        "ticket": flight.Ticket("SHOW TABLES".encode("utf-8")),
+                        "location": [self._location],
+                        "schema": pa.schema([])
+                    },
+                    {
                         "command": "show_version",
                         "ticket": flight.Ticket("SELECT version()".encode("utf-8")),
                         "location": [self._location],
