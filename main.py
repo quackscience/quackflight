@@ -309,6 +309,21 @@ flight_host = os.getenv('FLIGHT_HOST', 'localhost')
 flight_port = int(os.getenv('FLIGHT_PORT', 8815))
 path = os.getenv('DATA', '.duckdb_data')
 
+def parse_ticket(ticket):
+    try:
+        # Try to decode the ticket as a JSON object
+        ticket_obj = json.loads(ticket.ticket.decode("utf-8"))
+        if isinstance(ticket_obj, str):
+            # If the JSON object is a string, parse it again
+            ticket_obj = json.loads(ticket_obj)
+        if "query" in ticket_obj:
+            return ticket_obj["query"]
+    except (json.JSONDecodeError, AttributeError):
+        # If decoding fails or "query" is not in the object, return the ticket as a string
+        return ticket.ticket.decode("utf-8")
+
+
+# Patch the main function where the ticket is processed
 if __name__ == '__main__':
     # Set up signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -334,12 +349,12 @@ if __name__ == '__main__':
 
         class HeaderMiddlewareFactory(flight.ServerMiddlewareFactory):
             def start_call(self, info, headers):
+                logger.debug(f"Info received: {info}")
                 logger.debug(f"Headers received: {headers}")
                 if "authorization" in headers:
                     # Get first value from list
                     auth = headers["authorization"][0]
                     auth = auth[7:] if auth.startswith('Bearer ') else auth
-                    logger.info(f"Authorization header found: {auth}")
                     middleware = HeaderMiddleware()
                     middleware.authorization = auth
                     return middleware
@@ -425,7 +440,7 @@ if __name__ == '__main__':
                 except Exception as e:
                     logger.debug(f"Middleware access error: {e}")
 
-                query = ticket.ticket.decode("utf-8")
+                query = parse_ticket(ticket)
                 logger.info(f"Executing query: {query}")
                 try:
                     result_table = self.conn.execute(query).fetch_arrow_table()
