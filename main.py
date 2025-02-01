@@ -375,9 +375,29 @@ if __name__ == '__main__':
                         "ticket": flight.Ticket("SELECT version()".encode("utf-8")),
                         "location": [self._location],
                         "schema": pa.schema([])
+                    },
+                    {
+                        "command": "list_schemas",
+                        "ticket": flight.Ticket("SHOW ALL TABLES".encode("utf-8")),
+                        "location": [self._location],
+                        "schema": pa.schema([])
                     }
                 ]
 
+            def do_action(self, context, action):
+                if action.type == "create_schema":
+                    body = action.body.to_pybytes().decode('utf-8')
+                    query = f"CREATE SCHEMA IF NOT EXISTS {body}"
+                    ticket=flight.Ticket(query.encode("utf-8"))
+                    self.do_get(context, ticket)
+                elif action.type == "create_table":
+                    body = action.body.to_pybytes().decode('utf-8')
+                    query = f"CREATE TABLE IF NOT EXISTS {body}"
+                    ticket=flight.Ticket(query.encode("utf-8"))
+                    self.do_get(context, ticket)
+                else:
+                    raise flight.FlightUnavailableError(F"Action '{action.type}' not implemented")
+            
             def do_get(self, context, ticket):
                 """Handle 'GET' requests"""
                 logger.debug("do_get called")
