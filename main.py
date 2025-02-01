@@ -338,6 +338,7 @@ if __name__ == '__main__':
                 if "authorization" in headers:
                     # Get first value from list
                     auth = headers["authorization"][0]
+                    auth = auth[7:] if auth.startswith('Bearer ') else auth
                     logger.info(f"Authorization header found: {auth}")
                     middleware = HeaderMiddleware()
                     middleware.authorization = auth
@@ -383,9 +384,12 @@ if __name__ == '__main__':
                         logger.info(
                             f"Using authorization from middleware: {auth_header}")
                         if isinstance(auth_header, str):
-                            username, password = auth_header.split(':', 1)
-                            user_pass_hash = hashlib.sha256(
-                                (username + password).encode()).hexdigest()
+                            if ':' in auth_header:
+                                username, password = auth_header.split(':', 1)
+                                user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                            else:
+                                user_pass_hash = auth_header 
+
                             db_file = os.path.join(
                                 dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
