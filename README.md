@@ -8,7 +8,7 @@
 _QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL interfaces_
 
 
-> [!TIP]
+> [!IMPORTANT]
 > - Easy HTTP API with multiple formats _(JSON,CSV,Parquet)_
 > - Powerful Arrow Flight API for modern data clients
 > - Unlocked Concurrent inserts and querying on DuckDB
@@ -47,17 +47,16 @@ Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](ht
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless an `authorization` header is provided for data persistence
 
-##### Custom Flight Ticket
+##### 🎫 Pass Airport Security
 ```sql
-D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
-┌───────┐
-│   1   │
-│ int32 │
-├───────┤
-│   1   │
-└───────┘
+CREATE SECRET airport_flight (
+·       type airport,
+‣       auth_token 'user:password',
+·       scope 'grpc://localhost:8815'
+· );
 ```
-##### Service Flight Ticket
+
+##### 🎫 Take Airport Flights
 ```sql
 D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1:8815', null);
 ┌─────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -65,6 +64,7 @@ D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1
 │ union(cmd blob, path varchar[]) │           struct(ticket blob, "location" varchar[], expiration_time timestamp, app_metadata blob)[]            │
 ├─────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ show_databases                  │ [{'ticket': SHOW DATABASES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]   │
+│ show_tables                     │ [{'ticket': SHOW TABLES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]      │
 │ show_version                    │ [{'ticket': SELECT version(), 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }] │
 └─────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -77,7 +77,18 @@ D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 └─────────────┘
 ```
 
-##### Python Flight Client
+##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
+```sql
+D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
+┌───────┐
+│   1   │
+│ int32 │
+├───────┤
+│   1   │
+└───────┘
+```
+
+##### 🎫 Take Python Flights
 ```python
 from pyarrow.flight import FlightClient, Ticket, FlightCallOptions 
 import json
@@ -111,10 +122,29 @@ quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://
   <img src="https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602">
 </a>
 
+```mermaid
+
+sequenceDiagram
+    participant Client
+    participant QuackPy
+    participant DuckDB
+
+
+    Client ->> QuackPy: ListFlights
+    QuackPy ->> Client: Return Flights Table
+    Client ->> QuackPy: GetFlightInfo
+    QuackPy ->> DuckDB: DuckDB Execute
+    DuckDB ->> QuackPy: Arrow Results Stream
+    QuackPy ->> Client: FlightInfo(ticket)
+    Client ->> QuackPy: do_get(ticket)
+    QuackPy ->> Client: Stream of Results
+
+```
+
 <br>
 
 
-<img src="https://github.com/user-attachments/assets/43dcbdf8-bc19-4419-a4b8-13956a6c3a2f" width=700>
+<img src="https://private-user-images.githubusercontent.com/1423657/407925434-1945e6ec-11f3-48ce-b92e-e06481eb4421.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MzgxODkzMDQsIm5iZiI6MTczODE4OTAwNCwicGF0aCI6Ii8xNDIzNjU3LzQwNzkyNTQzNC0xOTQ1ZTZlYy0xMWYzLTQ4Y2UtYjkyZS1lMDY0ODFlYjQ0MjEucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDEyOSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTAxMjlUMjIxNjQ0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9ZTM3ZmQzZDY0NWQ4OTJiMzIxNzJiN2ZmMDEyNzgwM2Y2YTJjY2IzOGI4YjkyZWVlYmVlZGM0N2M0NDcxODYxZiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.u-9ywsscFXGEJM3UB_qrwz4K1cFRAhBtfHmY3Znjko8" width=600>
 
 
 

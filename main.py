@@ -410,13 +410,9 @@ if __name__ == '__main__':
                     query = f"CREATE TABLE IF NOT EXISTS {body}"
                     ticket=flight.Ticket(query.encode("utf-8"))
                     self.do_get(context, ticket)
-                elif action.type == "list_schemas":
-                    query = f"SHOW ALL TABLES"
-                    ticket=flight.Ticket(query.encode("utf-8"))
-                    self.do_get(context, ticket)
                 else:
                     raise flight.FlightUnavailableError(F"Action '{action.type}' not implemented")
-
+            
             def do_get(self, context, ticket):
                 """Handle 'GET' requests"""
                 logger.debug("do_get called")
