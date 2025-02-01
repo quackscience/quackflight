@@ -64,7 +64,7 @@ D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1
 │ union(cmd blob, path varchar[]) │           struct(ticket blob, "location" varchar[], expiration_time timestamp, app_metadata blob)[]            │
 ├─────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ show_databases                  │ [{'ticket': SHOW DATABASES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]   │
-│ show_tables                   │ [{'ticket': SHOW TABLES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]        │
+│ show_tables                     │ [{'ticket': SHOW TABLES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]      │
 │ show_version                    │ [{'ticket': SELECT version(), 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }] │
 └─────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
