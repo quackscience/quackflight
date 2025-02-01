@@ -309,6 +309,21 @@ flight_host = os.getenv('FLIGHT_HOST', 'localhost')
 flight_port = int(os.getenv('FLIGHT_PORT', 8815))
 path = os.getenv('DATA', '.duckdb_data')
 
+def parse_ticket(ticket):
+    try:
+        # Try to decode the ticket as a JSON object
+        ticket_obj = json.loads(ticket.ticket.decode("utf-8"))
+        if isinstance(ticket_obj, str):
+            # If the JSON object is a string, parse it again
+            ticket_obj = json.loads(ticket_obj)
+        if "query" in ticket_obj:
+            return ticket_obj["query"]
+    except (json.JSONDecodeError, AttributeError):
+        # If decoding fails or "query" is not in the object, return the ticket as a string
+        return ticket.ticket.decode("utf-8")
+
+
+# Patch the main function where the ticket is processed
 if __name__ == '__main__':
     # Set up signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -334,11 +349,12 @@ if __name__ == '__main__':
 
         class HeaderMiddlewareFactory(flight.ServerMiddlewareFactory):
             def start_call(self, info, headers):
+                logger.debug(f"Info received: {info}")
                 logger.debug(f"Headers received: {headers}")
                 if "authorization" in headers:
                     # Get first value from list
                     auth = headers["authorization"][0]
-                    logger.info(f"Authorization header found: {auth}")
+                    auth = auth[7:] if auth.startswith('Bearer ') else auth
                     middleware = HeaderMiddleware()
                     middleware.authorization = auth
                     return middleware
@@ -364,12 +380,42 @@ if __name__ == '__main__':
                         "schema": pa.schema([])
                     },
                     {
+                        "command": "show_tables",
+                        "ticket": flight.Ticket("SHOW TABLES".encode("utf-8")),
+                        "location": [self._location],
+                        "schema": pa.schema([])
+                    },
+                    {
                         "command": "show_version",
                         "ticket": flight.Ticket("SELECT version()".encode("utf-8")),
                         "location": [self._location],
                         "schema": pa.schema([])
+                    },
+                    {
+                        "command": "list_schemas",
+                        "ticket": flight.Ticket("SHOW ALL TABLES".encode("utf-8")),
+                        "location": [self._location],
+                        "schema": pa.schema([])
                     }
                 ]
+
+            def do_action(self, context, action):
+                if action.type == "create_schema":
+                    body = action.body.to_pybytes().decode('utf-8')
+                    query = f"CREATE SCHEMA IF NOT EXISTS {body}"
+                    ticket=flight.Ticket(query.encode("utf-8"))
+                    self.do_get(context, ticket)
+                elif action.type == "create_table":
+                    body = action.body.to_pybytes().decode('utf-8')
+                    query = f"CREATE TABLE IF NOT EXISTS {body}"
+                    ticket=flight.Ticket(query.encode("utf-8"))
+                    self.do_get(context, ticket)
+                elif action.type == "list_schemas":
+                    query = f"SHOW ALL TABLES"
+                    ticket=flight.Ticket(query.encode("utf-8"))
+                    self.do_get(context, ticket)
+                else:
+                    raise flight.FlightUnavailableError(F"Action '{action.type}' not implemented")
 
             def do_get(self, context, ticket):
                 """Handle 'GET' requests"""
@@ -383,9 +429,12 @@ if __name__ == '__main__':
                         logger.info(
                             f"Using authorization from middleware: {auth_header}")
                         if isinstance(auth_header, str):
-                            username, password = auth_header.split(':', 1)
-                            user_pass_hash = hashlib.sha256(
-                                (username + password).encode()).hexdigest()
+                            if ':' in auth_header:
+                                username, password = auth_header.split(':', 1)
+                                user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                            else:
+                                user_pass_hash = auth_header 
+
                             db_file = os.path.join(
                                 dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
@@ -395,7 +444,7 @@ if __name__ == '__main__':
                 except Exception as e:
                     logger.debug(f"Middleware access error: {e}")
 
-                query = ticket.ticket.decode("utf-8")
+                query = parse_ticket(ticket)
                 logger.info(f"Executing query: {query}")
                 try:
                     result_table = self.conn.execute(query).fetch_arrow_table()
