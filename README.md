@@ -47,16 +47,15 @@ Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](ht
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless an `authorization` header is provided for data persistence
 
-##### 🎫 Take Custom Flights 
+##### 🎫 Pass Airport Security
 ```sql
-D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
-┌───────┐
-│   1   │
-│ int32 │
-├───────┤
-│   1   │
-└───────┘
+CREATE SECRET airport_flight (
+·       type airport,
+‣       auth_token 'user:password',
+·       scope 'grpc://localhost:8815'
+· );
 ```
+
 ##### 🎫 Take Airport Flights
 ```sql
 D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1:8815', null);
@@ -65,6 +64,7 @@ D select flight_descriptor, endpoint from airport_list_flights('grpc://127.0.0.1
 │ union(cmd blob, path varchar[]) │           struct(ticket blob, "location" varchar[], expiration_time timestamp, app_metadata blob)[]            │
 ├─────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ show_databases                  │ [{'ticket': SHOW DATABASES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]   │
+│ show_tables                   │ [{'ticket': SHOW TABLES, 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }]        │
 │ show_version                    │ [{'ticket': SELECT version(), 'location': [grpc://localhost:8815], 'expiration_time': NULL, 'app_metadata': }] │
 └─────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -75,6 +75,17 @@ D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 ├─────────────┤
 │ v1.1.3      │
 └─────────────┘
+```
+
+##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
+```sql
+D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
+┌───────┐
+│   1   │
+│ int32 │
+├───────┤
+│   1   │
+└───────┘
 ```
 
 ##### 🎫 Take Python Flights
