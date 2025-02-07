@@ -110,6 +110,8 @@ D SELECT * FROM deltalake.test1.people;
 ```sql
 USE test1; SELECT * FROM people;
 ```
+![image](https://github.com/user-attachments/assets/82d9c7bf-cbf2-49d3-b4dc-a57a0ddaf46a)
+
 
 ##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
 ```sql
