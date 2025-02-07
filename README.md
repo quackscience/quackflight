@@ -9,8 +9,8 @@ _QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arr
 
 
 > [!IMPORTANT]
+> - Arrow Flight API for modern data clients _(DuckDB Airport)_
 > - Easy HTTP API with multiple formats _(JSON,CSV,Parquet)_
-> - Powerful Arrow Flight API for modern data clients
 > - Unlocked Concurrent inserts and querying on DuckDB
 > - Persistent storage using w/ multiuser authentication
 > - Native access to any DuckDB Extension & Format
@@ -76,6 +76,42 @@ D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 │ v1.1.3      │
 └─────────────┘
 ```
+
+##### 🎫 ATTACH Flights Tables
+```sql
+D --- Attach to Flight Server
+D ATTACH 'deltalake' (TYPE AIRPORT, location 'grpc://localhost:8815/'); 
+
+D --- Create Schema + Table
+D CREATE SCHEMA deltalake.test1; 
+D CREATE TABLE deltalake.test1.people (
+     name VARCHAR,
+     love_of_duckdb INT,
+     tags VARCHAR[]
+    );
+
+D --- Insert into Flight Table
+D INSERT INTO deltalake.test1.people values
+  ('rusty', 5, ['airport', 'datasketches']);
+
+D --- Select from Flight Table
+D SELECT * FROM deltalake.test1.people;
+┌─────────┬────────────────┬─────────────────────────┐
+│  name   │ love_of_duckdb │          tags           │
+│ varchar │     int32      │        varchar[]        │
+├─────────┼────────────────┼─────────────────────────┤
+│ rusty   │              5 │ [airport, datasketches] │
+├─────────┴────────────────┴─────────────────────────┤
+│ 1 row.                                   3 columns │
+└────────────────────────────────────────────────────┘
+```
+
+> Flight Tables can be accessed via HTTP API using the schema name
+```sql
+USE test1; SELECT * FROM people;
+```
+![image](https://github.com/user-attachments/assets/82d9c7bf-cbf2-49d3-b4dc-a57a0ddaf46a)
+
 
 ##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
 ```sql
