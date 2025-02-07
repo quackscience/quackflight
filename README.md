@@ -79,13 +79,6 @@ D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 
 ##### 🎫 ATTACH Flights Tables
 ```sql
-D --- Setupe secret auth
-D CREATE SECRET airport_flight (
-     type airport,
-     auth_token 'user:password',
-     scope 'grpc://localhost:8815'
-    );
-
 D --- Attach to Flight Server
 D ATTACH 'deltalake' (TYPE AIRPORT, location 'grpc://localhost:8815/'); 
 
@@ -111,6 +104,11 @@ D SELECT * FROM deltalake.test1.people;
 ├─────────┴────────────────┴─────────────────────────┤
 │ 1 row.                                   3 columns │
 └────────────────────────────────────────────────────┘
+```
+
+> Flight Tables can be accessed via HTTP API using the schema name
+```sql
+USE test1; SELECT * FROM people;
 ```
 
 ##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
