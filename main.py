@@ -7,6 +7,9 @@ import tempfile
 import hashlib
 import base64
 import threading
+import msgpack
+from dataclasses import dataclass
+from typing import Optional, Dict, Any, List
 
 from flask import Flask, request, jsonify
 from flask_httpauth import HTTPBasicAuth
@@ -14,6 +17,7 @@ from flask_cors import CORS
 from cachetools import LRUCache
 import pyarrow as pa
 import pyarrow.flight as flight
+import zstandard as zstd
 
 import signal
 import threading
@@ -78,6 +82,7 @@ def verify(username, password):
     else:
         global path
         os.makedirs(path, exist_ok=True)
+        logger.info(f"Using http auth: {username}:{password}")
         user_pass_hash = hashlib.sha256(
             (username + password).encode()).hexdigest()
         db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
@@ -323,6 +328,60 @@ def parse_ticket(ticket):
         return ticket.ticket.decode("utf-8")
 
 
+@dataclass
+class FlightSchemaMetadata:
+    type: str
+    catalog: str
+    schema: str
+    name: str
+    comment: Optional[str]
+    input_schema: pa.Schema
+    description: Optional[str] = None
+    action_name: Optional[str] = None
+
+    def serialize(self) -> bytes:
+        metadata = {
+            'type': self.type,
+            'catalog': self.catalog,
+            'schema': self.schema,
+            'name': self.name,
+            'comment': self.comment,
+            'input_schema': self.input_schema.serialize().to_pybytes()
+        }
+        if self.description:
+            metadata['description'] = self.description
+        if self.action_name:
+            metadata['action_name'] = self.action_name
+        return msgpack.packb(metadata)
+
+    @classmethod
+    def deserialize(cls, data: bytes) -> 'FlightSchemaMetadata':
+        metadata = msgpack.unpackb(data)
+        metadata['input_schema'] = pa.ipc.read_schema(metadata['input_schema'])
+        return cls(**metadata)
+
+
+# Add this helper class for schema serialization
+@dataclass
+class SerializedSchema:
+    schema: str
+    description: str
+    tags: Dict[str, str]
+    contents: Dict[str, Optional[str]]
+
+    def to_dict(self) -> Dict:
+        return {
+            "schema": self.schema,
+            "description": self.description,
+            "tags": self.tags,
+            "contents": {
+                "url": None,
+                "sha256": None,
+                "serialized": None
+            }
+        }
+
+
 # Patch the main function where the ticket is processed
 if __name__ == '__main__':
     # Set up signal handlers
@@ -343,6 +402,7 @@ if __name__ == '__main__':
         class HeaderMiddleware(flight.ServerMiddleware):
             def __init__(self):
                 self.authorization = None
+                self.headers = {}  # Store all headers
 
             def call_completed(self, exception=None):
                 pass
@@ -351,14 +411,18 @@ if __name__ == '__main__':
             def start_call(self, info, headers):
                 logger.debug(f"Info received: {info}")
                 logger.debug(f"Headers received: {headers}")
+                middleware = HeaderMiddleware()
+                
+                # Store all headers in the middleware
+                middleware.headers = headers
+                
                 if "authorization" in headers:
                     # Get first value from list
                     auth = headers["authorization"][0]
                     auth = auth[7:] if auth.startswith('Bearer ') else auth
-                    middleware = HeaderMiddleware()
                     middleware.authorization = auth
-                    return middleware
-                return HeaderMiddleware()
+                    
+                return middleware
 
         class DuckDBFlightServer(flight.FlightServerBase):
             def __init__(self, location=f"grpc://{flight_host}:{flight_port}", db_path=":memory:"):
@@ -367,63 +431,295 @@ if __name__ == '__main__':
                 self._location = location
                 logger.info(f"Initializing Flight server at {location}")
                 self.conn = duckdb.connect(db_path)
-                self.conn.install_extension("chsql", repository="community")
-                self.conn.install_extension(
-                    "chsql_native", repository="community")
-                self.conn.load_extension("chsql")
-                self.conn.load_extension("chsql_native")
+                
+                # Install and load required extensions
+                try:
+                    # Install extensions
+                    self.conn.install_extension("chsql", repository="community")
+                    self.conn.install_extension("chsql_native", repository="community")
+                    
+                    # Load extensions
+                    self.conn.load_extension("chsql")
+                    self.conn.load_extension("chsql_native")
+                    
+                    logger.debug("Initialized DuckDB extensions")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize extensions: {e}")
+                
+                # Define schema for catalog listing
+                catalog_schema = pa.schema([
+                    ('catalog_name', pa.string()),
+                    ('schema_name', pa.string()),
+                    ('description', pa.string())
+                ])
+                
+                # Define schema for table listing
+                table_schema = pa.schema([
+                    ('table_name', pa.string()),
+                    ('schema_name', pa.string()),
+                    ('catalog_name', pa.string()),
+                    ('table_type', pa.string())
+                ])
+                
                 self.flights = [
                     {
                         "command": "show_databases",
                         "ticket": flight.Ticket("SHOW DATABASES".encode("utf-8")),
                         "location": [self._location],
-                        "schema": pa.schema([])
+                        "schema": catalog_schema
                     },
                     {
                         "command": "show_tables",
                         "ticket": flight.Ticket("SHOW TABLES".encode("utf-8")),
                         "location": [self._location],
-                        "schema": pa.schema([])
+                        "schema": table_schema
                     },
                     {
                         "command": "show_version",
                         "ticket": flight.Ticket("SELECT version()".encode("utf-8")),
                         "location": [self._location],
-                        "schema": pa.schema([])
+                        "schema": pa.schema([('version', pa.string())])
                     },
                     {
                         "command": "list_schemas",
                         "ticket": flight.Ticket("SHOW ALL TABLES".encode("utf-8")),
                         "location": [self._location],
-                        "schema": pa.schema([])
+                        "schema": table_schema
                     }
                 ]
 
             def do_action(self, context, action):
-                if action.type == "create_schema":
-                    body = action.body.to_pybytes().decode('utf-8')
-                    query = f"CREATE SCHEMA IF NOT EXISTS {body}"
-                    ticket=flight.Ticket(query.encode("utf-8"))
-                    self.do_get(context, ticket)
+                """Handle Flight actions"""
+                logger.debug(f"Action Request: {action}")
+                
+                if action.type == "list_schemas":
+                    try:
+                        # Parse the request body
+                        body = json.loads(action.body.to_pybytes().decode('utf-8'))
+                        catalog_name = body.get("catalog_name", "main")
+                        
+                        # Query schemas from DuckDB
+                        query = """
+                            SELECT 
+                                schema_name as schema,
+                                'DuckDB Schema' as description,
+                                '{}' as tags
+                            FROM information_schema.schemata 
+                            WHERE catalog_name = ?
+                        """
+                        result = self.conn.execute(query, [catalog_name]).fetchall()
+                        
+                        # Convert results to SerializedSchema objects
+                        schemas = []
+                        for row in result:
+                            schema = SerializedSchema(
+                                schema=row[0],
+                                description=row[1],
+                                tags=json.loads(row[2]),
+                                contents={"url": None, "sha256": None, "serialized": None}
+                            )
+                            schemas.append(schema.to_dict())
+                        
+                        # Create the catalog root structure
+                        catalog_root = {
+                            "contents": {
+                                "url": None,
+                                "sha256": None,
+                                "serialized": None
+                            },
+                            "schemas": schemas
+                        }
+                        
+                        # Serialize with msgpack
+                        packed_data = msgpack.packb(catalog_root)
+                        
+                        # Compress with zstd
+                        compressor = zstd.ZstdCompressor()
+                        compressed_data = compressor.compress(packed_data)
+                        
+                        # Create result with decompressed length and compressed data
+                        decompressed_length = len(packed_data)
+                        length_bytes = decompressed_length.to_bytes(4, byteorder='little')
+                        
+                        # Return results as flight.Result objects
+                        yield flight.Result(pa.py_buffer(length_bytes))
+                        yield flight.Result(pa.py_buffer(compressed_data))
+                        
+                    except Exception as e:
+                        logger.exception("Error in list_schemas action")
+                        raise flight.FlightUnavailableError(f"Failed to list schemas: {str(e)}")
+                    
+                elif action.type == "create_schema":
+                    try:
+                        # Set up authenticated connection first
+                        middleware = context.get_middleware("auth")
+                        if middleware and middleware.authorization:
+                            auth_header = middleware.authorization
+                            logger.info(f"Using authorization from middleware: {auth_header}")
+                            if isinstance(auth_header, str):
+                                if ':' in auth_header:
+                                    username, password = auth_header.split(':', 1)
+                                    user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                                else:
+                                    user_pass_hash = auth_header 
+
+                                db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                                logger.info(f'Using database file: {db_file}')
+                                self.conn = duckdb.connect(db_file)
+                                
+                                # Install and load extensions
+                                try:
+                                    self.conn.install_extension("chsql", repository="community")
+                                    self.conn.install_extension("chsql_native", repository="community")
+                                    self.conn.load_extension("chsql")
+                                    self.conn.load_extension("chsql_native")
+                                except Exception as e:
+                                    logger.warning(f"Failed to initialize extensions: {e}")
+
+                        # Try msgpack first
+                        try:
+                            body = msgpack.unpackb(action.body.to_pybytes())
+                        except:
+                            # Fall back to UTF-8 if msgpack fails
+                            body = action.body.to_pybytes().decode('utf-8')
+                            
+                        # Extract schema name from the full path (e.g., deltalake.test1 -> test1)
+                        schema_name = body.split('.')[-1] if '.' in body else body
+                        
+                        # Create schema in the authenticated database
+                        query = f"CREATE SCHEMA IF NOT EXISTS {schema_name}"
+                        logger.debug(f"Creating schema with query: {query}")
+                        self.conn.execute(query)
+                        
+                    except Exception as e:
+                        logger.exception("Error in create_schema action")
+                        raise flight.FlightUnavailableError(f"Failed to create schema: {str(e)}")
+                    
                 elif action.type == "create_table":
-                    body = action.body.to_pybytes().decode('utf-8')
-                    query = f"CREATE TABLE IF NOT EXISTS {body}"
-                    ticket=flight.Ticket(query.encode("utf-8"))
-                    self.do_get(context, ticket)
+                    try:
+                        # Set up authenticated connection first
+                        middleware = context.get_middleware("auth")
+                        if middleware and middleware.authorization:
+                            auth_header = middleware.authorization
+                            logger.info(f"Using authorization from middleware: {auth_header}")
+                            if isinstance(auth_header, str):
+                                if ':' in auth_header:
+                                    username, password = auth_header.split(':', 1)
+                                    user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                                else:
+                                    user_pass_hash = auth_header 
+
+                                db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                                logger.info(f'Using database file: {db_file}')
+                                self.conn = duckdb.connect(db_file)
+                                
+                                # Install and load extensions
+                                try:
+                                    self.conn.install_extension("chsql", repository="community")
+                                    self.conn.install_extension("chsql_native", repository="community")
+                                    self.conn.load_extension("chsql")
+                                    self.conn.load_extension("chsql_native")
+                                except Exception as e:
+                                    logger.warning(f"Failed to initialize extensions: {e}")
+
+                        # Get the raw bytes and parse table info
+                        body_bytes = action.body.to_pybytes()
+                        logger.debug(f"Raw table creation bytes: {body_bytes.hex()}")
+                        
+                        try:
+                            # Parse Arrow IPC format
+                            reader = pa.ipc.open_stream(pa.py_buffer(body_bytes))
+                            table = reader.read_all()
+                            
+                            logger.debug(f"Arrow schema: {table.schema}")
+                            logger.debug(f"Column names: {table.column_names}")
+                            
+                            # Get metadata from schema
+                            schema_metadata = table.schema.metadata
+                            catalog_name = schema_metadata.get(b'catalog_name', b'').decode('utf-8')
+                            schema_name = schema_metadata.get(b'schema_name', b'').decode('utf-8')
+                            table_name = schema_metadata.get(b'table_name', b'').decode('utf-8')
+                            
+                            # Extract actual schema name (e.g., test1 from deltalake.test1)
+                            actual_schema = schema_name.split('.')[-1] if '.' in schema_name else schema_name
+                            
+                            # Get columns from schema
+                            columns = []
+                            for field in table.schema:
+                                columns.append({
+                                    'name': field.name,
+                                    'type': self._arrow_to_duckdb_type(field.type)
+                                })
+                            
+                            logger.debug(f"Parsed metadata - catalog: {catalog_name}, schema: {schema_name}, table: {table_name}")
+                            logger.debug(f"Columns: {columns}")
+                            
+                            if not actual_schema or not table_name:
+                                raise flight.FlightUnavailableError(
+                                    f"Missing schema_name or table_name in request. Found catalog={catalog_name}, schema={schema_name}, table={table_name}")
+                            
+                            column_defs = []
+                            for col in columns:
+                                name = col.get('name')
+                                type_ = col.get('type')
+                                if not name or not type_:
+                                    raise flight.FlightUnavailableError(f"Invalid column definition: {col}")
+                                column_defs.append(f"{name} {type_}")
+                            
+                            # Create table in the authenticated database
+                            query = f"""CREATE TABLE IF NOT EXISTS {actual_schema}.{table_name} (
+                                {', '.join(column_defs)}
+                            )"""
+                            
+                            logger.debug(f"Creating table with query: {query}")
+                            self.conn.execute(query)
+                            
+                            # Create and return FlightInfo for the newly created table
+                            schema_metadata = FlightSchemaMetadata(
+                                type="table",
+                                catalog=catalog_name,
+                                schema=schema_name,
+                                name=table_name,
+                                comment=None,
+                                input_schema=table.schema
+                            )
+                            
+                            flight_info = flight.FlightInfo(
+                                table.schema,
+                                flight.FlightDescriptor.for_path(table_name.encode()),
+                                [flight.FlightEndpoint(
+                                    ticket=flight.Ticket(
+                                        f"SELECT * FROM {catalog_name}.{schema_name}.{table_name}".encode()
+                                    ),
+                                    locations=[self._location]
+                                )],
+                                -1,  # total_records
+                                -1,  # total_bytes
+                                schema_metadata.serialize()
+                            )
+                            
+                            yield flight.Result(flight_info.serialize())
+                            
+                        except Exception as e:
+                            logger.exception("Failed to parse Arrow IPC data")
+                            raise flight.FlightUnavailableError(f"Invalid Arrow IPC data in request: {str(e)}")
+                            
+                    except Exception as e:
+                        logger.exception("Error in create_table action")
+                        raise flight.FlightUnavailableError(f"Failed to create table: {str(e)}")
+                    
                 else:
-                    raise flight.FlightUnavailableError(F"Action '{action.type}' not implemented")
-            
+                    raise flight.FlightUnavailableError(f"Action '{action.type}' not implemented")
+
             def do_get(self, context, ticket):
                 """Handle 'GET' requests"""
                 logger.debug("do_get called")
-
-                # Access middleware
                 try:
+                    # Access middleware and set up connection
                     middleware = context.get_middleware("auth")
                     if middleware and middleware.authorization:
                         auth_header = middleware.authorization
-                        logger.info(
-                            f"Using authorization from middleware: {auth_header}")
+                        logger.info(f"Using authorization from middleware: {auth_header}")
                         if isinstance(auth_header, str):
                             if ':' in auth_header:
                                 username, password = auth_header.split(':', 1)
@@ -431,16 +727,34 @@ if __name__ == '__main__':
                             else:
                                 user_pass_hash = auth_header 
 
-                            db_file = os.path.join(
-                                dbpath, f"{user_pass_hash}.db")
+                            db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
                             self.conn = duckdb.connect(db_file)
-                            self.conn.load_extension("chsql")
-                            self.conn.load_extension("chsql_native")
+                            
+                            # Install and load extensions
+                            try:
+                                self.conn.install_extension("chsql", repository="community")
+                                self.conn.install_extension("chsql_native", repository="community")
+                                self.conn.load_extension("chsql")
+                                self.conn.load_extension("chsql_native")
+                            except Exception as e:
+                                logger.warning(f"Failed to initialize extensions: {e}")
+
                 except Exception as e:
                     logger.debug(f"Middleware access error: {e}")
 
                 query = parse_ticket(ticket)
+                
+                # Rewrite query to use local schema instead of deltalake catalog
+                if query.lower().startswith("select"):
+                    # Extract schema and table from deltalake.schema.table pattern
+                    parts = query.split()
+                    for i, part in enumerate(parts):
+                        if "deltalake." in part.lower():
+                            # Remove the catalog prefix, keeping schema and table
+                            parts[i] = part.split(".", 1)[1]
+                    query = " ".join(parts)
+                
                 logger.info(f"Executing query: {query}")
                 try:
                     result_table = self.conn.execute(query).fetch_arrow_table()
@@ -465,52 +779,335 @@ if __name__ == '__main__':
 
             def get_flight_info(self, context, descriptor):
                 """Implement 'get_flight_info'"""
-                if descriptor.command is not None:
-                    query = descriptor.command.decode("utf-8")
-                    result_table = self.conn.execute(query).fetch_arrow_table()
-                    schema = result_table.schema
-                    endpoints = [flight.FlightEndpoint(
-                        ticket=flight.Ticket(query.encode("utf-8")),
-                        locations=[self._location]
-                    )]
-                    return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
-                elif descriptor.path is not None:
-                    for flight_info in self.flights:
-                        if descriptor.path[0].decode("utf-8") == flight_info["command"]:
-                            query = flight_info["ticket"].ticket.decode("utf-8")
-                            logger.info(f"Attempting flight with query: {query}")
-                            try:
-                                middleware = context.get_middleware("auth")
-                                result_table = self.conn.execute(query).fetch_arrow_table()
-                                schema = result_table.schema
-                                endpoints = [flight.FlightEndpoint(
-                                    ticket=flight.Ticket(query.encode("utf-8")),
-                                    locations=[self._location]
-                                )]
-                                return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+                try:
+                    # Set up authenticated connection
+                    middleware = context.get_middleware("auth")
+                    if middleware and middleware.authorization:
+                        auth_header = middleware.authorization
+                        logger.info(f"Using authorization from middleware: {auth_header}")
+                        if isinstance(auth_header, str):
+                            if ':' in auth_header:
+                                username, password = auth_header.split(':', 1)
+                                user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                            else:
+                                user_pass_hash = auth_header 
 
+                            db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                            logger.info(f'Using database file: {db_file}')
+                            self.conn = duckdb.connect(db_file)
+                            
+                            # Install and load extensions
+                            try:
+                                self.conn.install_extension("chsql", repository="community")
+                                self.conn.install_extension("chsql_native", repository="community")
+                                self.conn.load_extension("chsql")
+                                self.conn.load_extension("chsql_native")
                             except Exception as e:
-                                logger.exception(f"Flight execution error: {str(e)}")
-                                raise flight.FlightUnavailableError("Failed taking off")
-                else:
-                    raise flight.FlightUnavailableError(
-                        "No command or path provided in the descriptor")
+                                logger.warning(f"Failed to initialize extensions: {e}")
+
+                    if descriptor.command is not None:
+                        query = descriptor.command.decode("utf-8")
+                        result_table = self.conn.execute(query).fetch_arrow_table()
+                        schema = result_table.schema
+                        endpoints = [flight.FlightEndpoint(
+                            ticket=flight.Ticket(query.encode("utf-8")),
+                            locations=[self._location]
+                        )]
+                        return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+                    elif descriptor.path is not None:
+                        for flight_info in self.flights:
+                            if descriptor.path[0].decode("utf-8") == flight_info["command"]:
+                                query = flight_info["ticket"].ticket.decode("utf-8")
+                                logger.info(f"Attempting flight with query: {query}")
+                                try:
+                                    result_table = self.conn.execute(query).fetch_arrow_table()
+                                    schema = result_table.schema
+                                    endpoints = [flight.FlightEndpoint(
+                                        ticket=flight.Ticket(query.encode("utf-8")),
+                                        locations=[self._location]
+                                    )]
+                                    return flight.FlightInfo(schema, descriptor, endpoints, -1, -1)
+
+                                except Exception as e:
+                                    logger.exception(f"Flight execution error: {str(e)}")
+                                    raise flight.FlightUnavailableError("Failed taking off")
+                    else:
+                        raise flight.FlightUnavailableError(
+                            "No command or path provided in the descriptor")
+                except Exception as e:
+                    logger.exception("Error in get_flight_info")
+                    raise flight.FlightUnavailableError(f"Failed to get flight info: {str(e)}")
 
             def list_flights(self, context, criteria):
-                """Implement 'list_flights'"""
+                """List available flights with metadata"""
                 logger.info("Listing available flights")
-                for flight_info in self.flights:
-                    yield flight.FlightInfo(
-                        flight_info["schema"],
-                        flight.FlightDescriptor.for_command(
-                            flight_info["command"]),
-                        [flight.FlightEndpoint(
-                            ticket=flight_info["ticket"],
-                            locations=flight_info["location"]
-                        )],
-                        -1,  # total_records
-                        -1   # total_bytes
-                    )
+                
+                try:
+                    # Set up authenticated connection
+                    middleware = context.get_middleware("auth")
+                    if middleware and middleware.authorization:
+                        auth_header = middleware.authorization
+                        logger.info(f"Using authorization from middleware: {auth_header}")
+                        if isinstance(auth_header, str):
+                            if ':' in auth_header:
+                                username, password = auth_header.split(':', 1)
+                                user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                            else:
+                                user_pass_hash = auth_header 
+
+                            db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                            logger.info(f'Using database file: {db_file}')
+                            self.conn = duckdb.connect(db_file)
+                            
+                            # Install and load extensions
+                            try:
+                                self.conn.install_extension("chsql", repository="community")
+                                self.conn.install_extension("chsql_native", repository="community")
+                                self.conn.load_extension("chsql")
+                                self.conn.load_extension("chsql_native")
+                            except Exception as e:
+                                logger.warning(f"Failed to initialize extensions: {e}")
+
+                    headers = middleware.headers if middleware else {}
+                    catalog_filter = None
+                    schema_filter = None
+                    
+                    # Extract filters from headers
+                    if "airport-list-flights-filter-catalog" in headers:
+                        catalog_filter = headers["airport-list-flights-filter-catalog"][0]
+                    if "airport-list-flights-filter-schema" in headers:
+                        schema_filter = headers["airport-list-flights-filter-schema"][0]
+                    
+                    logger.debug(f"Filtering flights - catalog: {catalog_filter}, schema: {schema_filter}")
+                    
+                    if catalog_filter and schema_filter:
+                        # Query for tables in the specific catalog and schema
+                        query = f"""
+                            SELECT 
+                                table_name,
+                                table_schema as schema_name,
+                                table_catalog as catalog_name,
+                                table_type,
+                                column_name,
+                                data_type
+                            FROM information_schema.tables 
+                            JOIN information_schema.columns USING (table_catalog, table_schema, table_name)
+                            WHERE table_catalog = '{catalog_filter}'
+                            AND table_schema = '{schema_filter}'
+                            ORDER BY table_name, ordinal_position
+                        """
+                        
+                        try:
+                            result = self.conn.execute(query).fetchall()
+                            
+                            # Group results by table
+                            tables = {}
+                            for row in result:
+                                table_name = row[0]
+                                if table_name not in tables:
+                                    tables[table_name] = {
+                                        'schema_name': row[1],
+                                        'catalog_name': row[2],
+                                        'table_type': row[3],
+                                        'columns': []
+                                    }
+                                tables[table_name]['columns'].append({
+                                    'name': row[4],
+                                    'type': row[5]
+                                })
+                            
+                            # Create flight info for each table
+                            for table_name, table_info in tables.items():
+                                # Create Arrow schema from columns
+                                fields = []
+                                for col in table_info['columns']:
+                                    # Convert DuckDB type to Arrow type
+                                    arrow_type = pa.string()  # Default to string
+                                    if 'INT' in col['type'].upper():
+                                        arrow_type = pa.int64()
+                                    elif 'DOUBLE' in col['type'].upper() or 'FLOAT' in col['type'].upper():
+                                        arrow_type = pa.float64()
+                                    elif 'BOOLEAN' in col['type'].upper():
+                                        arrow_type = pa.bool_()
+                                    fields.append(pa.field(col['name'], arrow_type))
+                                
+                                schema = pa.schema(fields)
+                                
+                                # Create metadata for the table
+                                schema_metadata = FlightSchemaMetadata(
+                                    type="table",
+                                    catalog=table_info['catalog_name'],
+                                    schema=table_info['schema_name'],
+                                    name=table_name,
+                                    comment=None,
+                                    input_schema=schema
+                                )
+                                
+                                # Create flight info
+                                flight_info = flight.FlightInfo(
+                                    schema,
+                                    flight.FlightDescriptor.for_path([table_name.encode()]),
+                                    [flight.FlightEndpoint(
+                                        ticket=flight.Ticket(
+                                            f"SELECT * FROM {table_info['catalog_name']}.{table_info['schema_name']}.{table_name}".encode()
+                                        ),
+                                        locations=[self._location]
+                                    )],
+                                    -1,  # total_records
+                                    -1,  # total_bytes
+                                    schema_metadata.serialize()
+                                )
+                                
+                                yield flight_info
+                                
+                        except Exception as e:
+                            logger.exception(f"Error querying tables: {str(e)}")
+                            raise flight.FlightUnavailableError(f"Failed to list tables: {str(e)}")
+                            
+                    else:
+                        # Return default flights when no specific filters
+                        for flight_info in self.flights:
+                            schema_metadata = FlightSchemaMetadata(
+                                type="table",
+                                catalog="main",
+                                schema="public",
+                                name=flight_info["command"],
+                                comment=None,
+                                input_schema=flight_info["schema"]
+                            )
+                            
+                            yield flight_info
+                            
+                except Exception as e:
+                    logger.exception("Error in list_flights")
+                    raise flight.FlightUnavailableError(f"Failed to list flights: {str(e)}")
+
+            def _arrow_to_duckdb_type(self, arrow_type):
+                """Convert Arrow type to DuckDB type"""
+                if pa.types.is_string(arrow_type):
+                    return 'VARCHAR'
+                elif pa.types.is_int32(arrow_type):
+                    return 'INTEGER'
+                elif pa.types.is_int64(arrow_type):
+                    return 'BIGINT'
+                elif pa.types.is_float32(arrow_type):
+                    return 'FLOAT'
+                elif pa.types.is_float64(arrow_type):
+                    return 'DOUBLE'
+                elif pa.types.is_boolean(arrow_type):
+                    return 'BOOLEAN'
+                elif pa.types.is_list(arrow_type):
+                    return f'{self._arrow_to_duckdb_type(arrow_type.value_type)}[]'
+                else:
+                    return 'VARCHAR'  # Default to VARCHAR for unknown types
+
+            def do_exchange(self, context, descriptor, reader, writer):
+                """Handle data exchange (PUT/INSERT operations)"""
+                logger.debug("do_exchange called")
+                try:
+                    # Get headers from middleware
+                    middleware = context.get_middleware("auth")
+                    headers = middleware.headers if middleware else {}
+                    
+                    # Set up authenticated connection
+                    if middleware and middleware.authorization:
+                        auth_header = middleware.authorization
+                        logger.info(f"Using authorization from middleware: {auth_header}")
+                        if isinstance(auth_header, str):
+                            if ':' in auth_header:
+                                username, password = auth_header.split(':', 1)
+                                user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                            else:
+                                user_pass_hash = auth_header 
+
+                            db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
+                            logger.info(f'Using database file: {db_file}')
+                            self.conn = duckdb.connect(db_file)
+                            
+                            # Install and load extensions
+                            try:
+                                self.conn.install_extension("chsql", repository="community")
+                                self.conn.install_extension("chsql_native", repository="community")
+                                self.conn.load_extension("chsql")
+                                self.conn.load_extension("chsql_native")
+                            except Exception as e:
+                                logger.warning(f"Failed to initialize extensions: {e}")
+                    
+                    # Get operation type from headers
+                    operation = headers.get("airport-operation", [None])[0]
+                    logger.debug(f"Exchange operation: {operation}")
+                    
+                    if operation == "insert":
+                        # Get table path from headers
+                        table_path = headers.get("airport-flight-path", [None])[0]
+                        if not table_path:
+                            raise flight.FlightUnavailableError("No table path provided for insert operation")
+                        
+                        logger.debug(f"Inserting into table: {table_path}")
+                        
+                        try:
+                            # Read schema from reader
+                            schema = reader.schema
+                            logger.debug(f"Received schema: {schema}")
+                            
+                            # Create response schema early
+                            response_schema = pa.schema([('rows_inserted', pa.int64())])
+                            writer.begin(response_schema)
+                            
+                            # Process data in batches
+                            total_rows = 0
+                            batch_num = 0
+                            
+                            # Read all batches
+                            try:
+                                while True:
+                                    try:
+                                        batch, metadata = reader.read_chunk()
+                                        if batch is None:
+                                            break
+                                        
+                                        batch_num += 1
+                                        logger.debug(f"Processing batch {batch_num} with {len(batch)} rows")
+                                        
+                                        # Create temporary table for this batch
+                                        temp_table = pa.Table.from_batches([batch])
+                                        temp_name = f"temp_insert_table_{batch_num}"
+                                        
+                                        # Register and insert this batch
+                                        self.conn.register(temp_name, temp_table)
+                                        query = f"INSERT INTO test1.{table_path} SELECT * FROM {temp_name}"
+                                        logger.debug(f"Executing insert query: {query}")
+                                        self.conn.execute(query)
+                                        
+                                        total_rows += len(batch)
+                                        
+                                    except StopIteration:
+                                        logger.debug("Reached end of input stream")
+                                        break
+                            except Exception as e:
+                                logger.exception(f"Error reading batch")
+                                raise
+                            
+                            logger.debug(f"Inserted total of {total_rows} rows")
+                            
+                            # Write response
+                            response_table = pa.Table.from_pylist(
+                                [{'rows_inserted': total_rows}],
+                                schema=response_schema
+                            )
+                            writer.write_table(response_table)
+                            writer.close()
+                            
+                        except Exception as e:
+                            logger.exception("Error during insert operation")
+                            raise flight.FlightUnavailableError(f"Insert operation failed: {str(e)}")
+                            
+                    else:
+                        raise flight.FlightUnavailableError(f"Unsupported operation: {operation}")
+                    
+                except Exception as e:
+                    logger.exception("Error in do_exchange")
+                    raise flight.FlightUnavailableError(f"Exchange operation failed: {str(e)}")
 
         server = DuckDBFlightServer()
         logger.info(
