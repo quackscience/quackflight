@@ -478,20 +478,6 @@ if __name__ == '__main__':
                 logger.info(f"Initializing Flight server at {location}")
                 self.conn = duckdb.connect(db_path)
                 
-                # Install and load required extensions
-                try:
-                    # Install extensions
-                    self.conn.install_extension("chsql", repository="community")
-                    self.conn.install_extension("chsql_native", repository="community")
-                    
-                    # Load extensions
-                    self.conn.load_extension("chsql")
-                    self.conn.load_extension("chsql_native")
-                    
-                    logger.debug("Initialized DuckDB extensions")
-                except Exception as e:
-                    logger.warning(f"Failed to initialize extensions: {e}")
-                
                 # Define schema for catalog listing
                 catalog_schema = pa.schema([
                     ('catalog_name', pa.string()),
@@ -628,15 +614,6 @@ if __name__ == '__main__':
                                 db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
                                 logger.info(f'Using database file: {db_file}')
                                 self.conn = duckdb.connect(db_file)
-                                
-                                # Install and load extensions
-                                try:
-                                    self.conn.install_extension("chsql", repository="community")
-                                    self.conn.install_extension("chsql_native", repository="community")
-                                    self.conn.load_extension("chsql")
-                                    self.conn.load_extension("chsql_native")
-                                except Exception as e:
-                                    logger.warning(f"Failed to initialize extensions: {e}")
 
                         # Try msgpack first
                         try:
@@ -675,15 +652,6 @@ if __name__ == '__main__':
                                 logger.info(f'Using database file: {db_file}')
                                 self.conn = duckdb.connect(db_file)
                                 
-                                # Install and load extensions
-                                try:
-                                    self.conn.install_extension("chsql", repository="community")
-                                    self.conn.install_extension("chsql_native", repository="community")
-                                    self.conn.load_extension("chsql")
-                                    self.conn.load_extension("chsql_native")
-                                except Exception as e:
-                                    logger.warning(f"Failed to initialize extensions: {e}")
-
                         # Get the raw bytes and parse table info
                         body_bytes = action.body.to_pybytes()
                         logger.debug(f"Raw table creation bytes: {body_bytes.hex()}")
@@ -792,15 +760,6 @@ if __name__ == '__main__':
                             db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
                             self.conn = duckdb.connect(db_file)
-                            
-                            # Install and load extensions
-                            try:
-                                self.conn.install_extension("chsql", repository="community")
-                                self.conn.install_extension("chsql_native", repository="community")
-                                self.conn.load_extension("chsql")
-                                self.conn.load_extension("chsql_native")
-                            except Exception as e:
-                                logger.warning(f"Failed to initialize extensions: {e}")
 
                 except Exception as e:
                     logger.debug(f"Middleware access error: {e}")
@@ -857,15 +816,6 @@ if __name__ == '__main__':
                             db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
                             self.conn = duckdb.connect(db_file)
-                            
-                            # Install and load extensions
-                            try:
-                                self.conn.install_extension("chsql", repository="community")
-                                self.conn.install_extension("chsql_native", repository="community")
-                                self.conn.load_extension("chsql")
-                                self.conn.load_extension("chsql_native")
-                            except Exception as e:
-                                logger.warning(f"Failed to initialize extensions: {e}")
 
                     if descriptor.command is not None:
                         query = descriptor.command.decode("utf-8")
@@ -920,15 +870,6 @@ if __name__ == '__main__':
                             db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
                             self.conn = duckdb.connect(db_file)
-                            
-                            # Install and load extensions
-                            try:
-                                self.conn.install_extension("chsql", repository="community")
-                                self.conn.install_extension("chsql_native", repository="community")
-                                self.conn.load_extension("chsql")
-                                self.conn.load_extension("chsql_native")
-                            except Exception as e:
-                                logger.warning(f"Failed to initialize extensions: {e}")
 
                     headers = middleware.headers if middleware else {}
                     catalog_filter = None
@@ -1085,15 +1026,6 @@ if __name__ == '__main__':
                             db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
                             logger.info(f'Using database file: {db_file}')
                             self.conn = duckdb.connect(db_file)
-                            
-                            # Install and load extensions
-                            try:
-                                self.conn.install_extension("chsql", repository="community")
-                                self.conn.install_extension("chsql_native", repository="community")
-                                self.conn.load_extension("chsql")
-                                self.conn.load_extension("chsql_native")
-                            except Exception as e:
-                                logger.warning(f"Failed to initialize extensions: {e}")
                     
                     # Get operation type from headers
                     operation = headers.get("airport-operation", [None])[0]
