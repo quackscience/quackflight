@@ -23,6 +23,7 @@ import signal
 import threading
 import logging
 import sys
+from threading import Lock
 
 # Configure logging
 logging.basicConfig(
@@ -63,33 +64,71 @@ CORS(app)
 # Initialize LRU Cache
 cache = LRUCache(maxsize=10)
 
-# Global connection
-conn = duckdb.connect(':memory:')
-conn.install_extension("chsql", repository="community")
-conn.install_extension("chsql_native", repository="community")
-conn.load_extension("chsql")
-conn.load_extension("chsql_native")
-# conn = None
+# Add near the top of the file, after imports but before app initialization
+from threading import Lock
+from typing import Dict, Optional
+
+class ConnectionManager:
+    def __init__(self):
+        self._connections: Dict[str, duckdb.DuckDBPyConnection] = {}
+        self._lock = Lock()
+        
+        # Create default in-memory connection
+        self._default_conn = duckdb.connect(':memory:')
+        self._setup_extensions(self._default_conn)
+    
+    def _setup_extensions(self, conn: duckdb.DuckDBPyConnection):
+        """Set up required extensions for a connection"""
+        try:
+            conn.install_extension("chsql", repository="community")
+            conn.install_extension("chsql_native", repository="community")
+            conn.load_extension("chsql")
+            conn.load_extension("chsql_native")
+        except Exception as e:
+            logger.warning(f"Failed to initialize extensions: {e}")
+    
+    def get_connection(self, auth_hash: Optional[str] = None) -> duckdb.DuckDBPyConnection:
+        """Get or create a connection for the given auth hash"""
+        if not auth_hash:
+            return self._default_conn
+            
+        with self._lock:
+            if auth_hash not in self._connections:
+                db_file = os.path.join(dbpath, f"{auth_hash}.db")
+                logger.info(f'Creating new connection for {db_file}')
+                conn = duckdb.connect(db_file)
+                self._setup_extensions(conn)
+                self._connections[auth_hash] = conn
+            return self._connections[auth_hash]
+
+# Create global connection manager
+connection_manager = ConnectionManager()
+
+# Replace the global conn variable with a property that uses the connection manager
+def get_current_connection() -> duckdb.DuckDBPyConnection:
+    """Get the current connection based on authentication"""
+    auth = request.authorization if hasattr(request, 'authorization') else None
+    if auth and auth.username and auth.password:
+        user_pass_hash = hashlib.sha256((auth.username + auth.password).encode()).hexdigest()
+        return connection_manager.get_connection(user_pass_hash)
+    return connection_manager.get_connection()
+
+# Remove the global conn variable and replace with this property
+@property
+def conn():
+    return get_current_connection()
 
 
 @auth.verify_password
 def verify(username, password):
-    global conn
     if not (username and password):
-        print('stateless session')
-        # conn = duckdb.connect(':memory:')
-
-    else:
-        global path
-        os.makedirs(path, exist_ok=True)
-        logger.info(f"Using http auth: {username}:{password}")
-        user_pass_hash = hashlib.sha256(
-            (username + password).encode()).hexdigest()
-        db_file = os.path.join(dbpath, f"{user_pass_hash}.db")
-        print(f'stateful session {db_file}')
-        conn = duckdb.connect(db_file)
-        conn.load_extension("chsql")
-        conn.load_extension("chsql_native")
+        logger.debug('Using stateless session')
+        return True
+    
+    logger.info(f"Using http auth: {username}:{password}")
+    user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+    # Just verify the connection exists/can be created
+    connection_manager.get_connection(user_pass_hash)
     return True
 
 
@@ -154,7 +193,9 @@ def convert_to_csv_tsv(result, delimiter=','):
     return '\n'.join(lines).encode()
 
 
-def handle_insert_query(query, format, data=None):
+def handle_insert_query(query, format, data=None, conn=None):
+    if conn is None:
+        conn = get_current_connection()
     table_name = query.split("INTO")[1].split()[0].strip()
     temp_file_name = None
     if format.lower() == 'jsoneachrow' and data is not None:
@@ -181,10 +222,13 @@ def save_to_tempfile(data):
 
 def duckdb_query_with_errmsg(query, format='JSONCompact', data=None, request_method="GET"):
     try:
+        # Get connection for current request
+        current_conn = get_current_connection()
+        
         if request_method == "POST" and query.strip().lower().startswith('insert into') and data:
-            return handle_insert_query(query, format, data)
+            return handle_insert_query(query, format, data, current_conn)
         start_time = time.time()
-        result = conn.execute(query)
+        result = current_conn.execute(query)
         query_time = time.time() - start_time
         if format.lower() == 'jsoncompact':
             output = convert_to_clickhouse_jsoncompact(result, query_time)
@@ -368,12 +412,14 @@ class SerializedSchema:
     description: str
     tags: Dict[str, str]
     contents: Dict[str, Optional[str]]
+    type: str
 
     def to_dict(self) -> Dict:
         return {
             "schema": self.schema,
             "description": self.description,
             "tags": self.tags,
+            "type": self.type,
             "contents": {
                 "url": None,
                 "sha256": None,
@@ -488,6 +534,20 @@ if __name__ == '__main__':
                     }
                 ]
 
+            def _get_connection_from_context(self, context) -> duckdb.DuckDBPyConnection:
+                """Get the appropriate connection based on Flight context"""
+                middleware = context.get_middleware("auth")
+                if middleware and middleware.authorization:
+                    auth_header = middleware.authorization
+                    if isinstance(auth_header, str):
+                        if ':' in auth_header:
+                            username, password = auth_header.split(':', 1)
+                            user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
+                        else:
+                            user_pass_hash = auth_header
+                        return connection_manager.get_connection(user_pass_hash)
+                return connection_manager.get_connection()
+
             def do_action(self, context, action):
                 """Handle Flight actions"""
                 logger.debug(f"Action Request: {action}")
@@ -503,7 +563,8 @@ if __name__ == '__main__':
                             SELECT 
                                 schema_name as schema,
                                 'DuckDB Schema' as description,
-                                '{}' as tags
+                                '{}' as tags,
+                                'table' as type
                             FROM information_schema.schemata 
                             WHERE catalog_name = ?
                         """
@@ -513,10 +574,11 @@ if __name__ == '__main__':
                         schemas = []
                         for row in result:
                             schema = SerializedSchema(
-                                schema=row[0],
+                                schema=catalog_name,
                                 description=row[1],
                                 tags=json.loads(row[2]),
-                                contents={"url": None, "sha256": None, "serialized": None}
+                                contents={"url": None, "sha256": None, "serialized": None},
+                                type=row[3]
                             )
                             schemas.append(schema.to_dict())
                         
