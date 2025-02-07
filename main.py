@@ -1069,7 +1069,8 @@ if __name__ == '__main__':
                                         
                                         # Register and insert this batch
                                         self.conn.register(temp_name, temp_table)
-                                        query = f"INSERT INTO test1.{table_path} SELECT * FROM {temp_name}"
+                                        actual_schema = table_path.split('.')[0] if '.' in table_path else table_path
+                                        query = f"INSERT INTO {actual_schema}.{table_path} SELECT * FROM {temp_name}"
                                         logger.debug(f"Executing insert query: {query}")
                                         self.conn.execute(query)
                                         
