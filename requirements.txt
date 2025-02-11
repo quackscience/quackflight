@@ -6,3 +6,4 @@ duckdb
 msgpack
 PyArrow
 zstandard
+hypercorn>=0.14.3

@@ -25,6 +25,10 @@ import logging
 import sys
 from threading import Lock
 
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
+import asyncio
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -433,11 +437,15 @@ if __name__ == '__main__':
     # Set up signal handlers
     signal.signal(signal.SIGINT, signal_handler)
 
-    def run_flask():
-        """Run Flask server"""
-        logger.info("Starting Flask server")
+    async def run_flask():
+        """Run Flask server with Hypercorn"""
+        logger.info("Starting Flask server with Hypercorn")
         try:
-            app.run(host=host, port=port, use_reloader=False)
+            config = Config()
+            config.bind = [f"{host}:{port}"]
+            config.alpn_protocols = ["h2", "http/1.1"]  # Support both HTTP/2 and HTTP/1.1
+            config.verify_mode = None  # Disable SSL verification for development
+            await serve(app, config)
         except Exception as e:
             logger.exception("Flask server error")
         finally:
@@ -1109,19 +1117,28 @@ if __name__ == '__main__':
             f"Starting DuckDB Flight server on {flight_host}:{flight_port}")
         server.serve()
 
-    # Start Flask server in a daemon thread
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    async def main():
+        # Start Flask server with Hypercorn
+        flask_task = asyncio.create_task(run_flask())
+        
+        # Run Flight server in a separate thread since it's not async
+        flight_thread = threading.Thread(target=run_flight_server, daemon=True)
+        flight_thread.start()
 
-    # Run Flight server in main thread
-    flight_thread = threading.Thread(target=run_flight_server, daemon=True)
-    flight_thread.start()
+        # Keep main thread alive until signal
+        try:
+            while running:
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            logger.info("KeyboardInterrupt received")
+        finally:
+            logger.info("Shutting down...")
+            # Cancel Flask task
+            flask_task.cancel()
+            try:
+                await flask_task
+            except asyncio.CancelledError:
+                pass
 
-    # Keep main thread alive until signal
-    try:
-        while running:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        logger.info("KeyboardInterrupt received")
-    finally:
-        logger.info("Shutting down...")
+    # Run everything in asyncio event loop
+    asyncio.run(main())
