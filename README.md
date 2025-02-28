@@ -2,10 +2,10 @@
 
 > _a pipe for quackheads_
 
-# :baby_chick: [quackflight](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)
+# :baby_chick: [QuackFlight](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)
 
 
-_QuackPy is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL interfaces_
+_QuackFlight is a serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL interfaces_
 
 
 > [!IMPORTANT]
@@ -28,7 +28,7 @@ docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:lates
 
 ### 👉 Usage
 
-> See the [Examples](https://github.com/quackscience/quackpy/tree/main/examples) directory for quick starters
+> See the [Examples](https://github.com/quackscience/quackflight/tree/main/examples) directory for quick starters
 
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless _authentication_ details are provided for data persistence
@@ -152,7 +152,7 @@ print(data_frame.to_markdown())
 ```
 
 ### 📺 SQL User-Interface
-quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://github.com/caioricciuti/ch-ui)
+quackflight ships with the DuckDB SQL quack user-interface based on [ch-ui](https://github.com/caioricciuti/ch-ui)
 
 <a href="https://quackpy.fly.dev">
   <img src="https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602">
@@ -162,18 +162,18 @@ quackpy ships with the DuckDB SQL quack user-interface based on [ch-ui](https://
 
 sequenceDiagram
     participant Client
-    participant QuackPy
+    participant QuackFlight
     participant DuckDB
 
 
-    Client ->> QuackPy: ListFlights
-    QuackPy ->> Client: Return Flights Table
-    Client ->> QuackPy: GetFlightInfo
-    QuackPy ->> DuckDB: DuckDB Execute
-    DuckDB ->> QuackPy: Arrow Results Stream
-    QuackPy ->> Client: FlightInfo(ticket)
-    Client ->> QuackPy: do_get(ticket)
-    QuackPy ->> Client: Stream of Results
+    Client ->> QuackFlight: ListFlights
+    QuackFlight ->> Client: Return Flights Table
+    Client ->> QuackFlight: GetFlightInfo
+    QuackFlight ->> DuckDB: DuckDB Execute
+    DuckDB ->> QuackFlight: Arrow Results Stream
+    QuackFlight ->> Client: FlightInfo(ticket)
+    Client ->> QuackFlight: do_get(ticket)
+    QuackFlight ->> Client: Stream of Results
 
 ```
 
