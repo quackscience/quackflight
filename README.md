@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/1e277820-d885-420f-9230-dcc64f26d256" width=250 />
+<img src="https://github.com/user-attachments/assets/deddab90-e409-4b1b-881f-d53f02597a1d" width=80 />
 
 # :baby_chick: [QuackFlight](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)
 
@@ -17,6 +17,8 @@ _QuackFlight is a serverless OLAP API built on top of DuckDB exposing HTTP/S and
 
 <br>
 
+<img src="https://github.com/user-attachments/assets/deddab90-e409-4b1b-881f-d53f02597a1d" width=80 />
+
 ### :seedling: Get Started
 Run using [docker](https://github.com/quackscience/quackflight/pkgs/container/quackflight) or build from source
 ```bash
@@ -31,7 +33,9 @@ docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackflight:l
 > [!NOTE]
 > Quackpipe executes queries in `:memory:` unless _authentication_ details are provided for data persistence
 
-#### 🕸️ HTTP API
+<br>
+
+#### 🕸️  HTTP API
 Execute DuckDB queries using the HTTP POST/GET API _(compatible with the ClickHouse HTTP API)_
 ```bash
 curl -X POST "http://user:persistence@localhost:8123" \
