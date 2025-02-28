@@ -43,6 +43,8 @@ curl -X POST "http://user:persistence@localhost:8123" \
    -d 'SELECT version()'  
 ```
 
+<br>
+
 #### ✈️ FLIGHT API
 Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](https://github.com/Query-farm/duckdb-airport-extension)
 
