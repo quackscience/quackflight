@@ -55,7 +55,7 @@ Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](ht
 ```sql
 CREATE SECRET airport_flight (
 ·       type airport,
-‣       auth_token 'user:password',
+‣       auth_token 'user:persistence',
 ·       scope 'grpc://localhost:8815'
 · );
 ```
@@ -119,7 +119,7 @@ USE test1; SELECT * FROM people;
 
 ##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
 ```sql
-D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:password'} );
+D SELECT * FROM airport_take_flight('grpc://localhost:8815', 'SELECT 1', headers := MAP{'authorization':'user:persistence'} );
 ┌───────┐
 │   1   │
 │ int32 │
