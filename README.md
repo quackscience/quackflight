@@ -1,4 +1,4 @@
-<a href="https://quackpy.fly.dev" target="_blank"><img src="https://github.com/user-attachments/assets/11e8a12a-4f8f-4cce-89bf-e58980e23186" width=220 /></a>
+<img src="https://github.com/user-attachments/assets/1e277820-d885-420f-9230-dcc64f26d256" width=250 />
 
 # :baby_chick: [QuackFlight](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)
 
