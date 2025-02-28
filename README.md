@@ -158,7 +158,7 @@ print(data_frame.to_markdown())
 <br>
 
 ### 📺 SQL User-Interface
-quackflight ships with the DuckDB SQL quack user-interface based on [ch-ui](https://github.com/caioricciuti/ch-ui)
+quackflight ships with the DuckDB SQL quack user-interface based on [duck-ui](https://github.com/caioricciuti/duck-ui)
 
 <a href="https://quackpy.fly.dev">
   <img src="https://github.com/user-attachments/assets/902a6336-c4f4-4a4e-85d5-78dd62cb7602">
