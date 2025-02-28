@@ -1,6 +1,4 @@
-<a href="https://quackpy.fly.dev" target="_blank"><img src="https://github.com/user-attachments/assets/3223f0dd-78e2-4b61-8690-5502a2290421" width=220 /></a>
-
-> _a pipe for quackheads_
+<a href="https://quackpy.fly.dev" target="_blank"><img src="https://github.com/user-attachments/assets/11e8a12a-4f8f-4cce-89bf-e58980e23186" width=220 /></a>
 
 # :baby_chick: [QuackFlight](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)
 
@@ -20,10 +18,10 @@ _QuackFlight is a serverless OLAP API built on top of DuckDB exposing HTTP/S and
 <br>
 
 ### :seedling: Get Started
-Run using [docker](https://github.com/quackscience/quackpy/pkgs/container/quackpy) or build from source
+Run using [docker](https://github.com/quackscience/quackflight/pkgs/container/quackflight) or build from source
 ```bash
-docker pull ghcr.io/quackscience/quackpy:latest
-docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackpy:latest
+docker pull ghcr.io/quackscience/quackflight:latest
+docker run -ti --rm -p 8123:8123 -p 8815:8815 ghcr.io/quackscience/quackflight:latest
 ```
 
 ### 👉 Usage
