@@ -180,13 +180,6 @@ sequenceDiagram
 <br>
 
 
-<img src="https://private-user-images.githubusercontent.com/1423657/407925434-1945e6ec-11f3-48ce-b92e-e06481eb4421.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MzgxODkzMDQsIm5iZiI6MTczODE4OTAwNCwicGF0aCI6Ii8xNDIzNjU3LzQwNzkyNTQzNC0xOTQ1ZTZlYy0xMWYzLTQ4Y2UtYjkyZS1lMDY0ODFlYjQ0MjEucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDEyOSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTAxMjlUMjIxNjQ0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9ZTM3ZmQzZDY0NWQ4OTJiMzIxNzJiN2ZmMDEyNzgwM2Y2YTJjY2IzOGI4YjkyZWVlYmVlZGM0N2M0NDcxODYxZiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.u-9ywsscFXGEJM3UB_qrwz4K1cFRAhBtfHmY3Znjko8" width=600>
-
-
-
-
-
-
 ###### :black_joker: Disclaimers 
 
 [^1]: DuckDB ® is a trademark of DuckDB Foundation. All rights reserved by their respective owners. [^1]
