@@ -155,6 +155,8 @@ print(data_frame.to_markdown())
 |  0 | v1.1.3        |
 ```
 
+<br>
+
 ### 📺 SQL User-Interface
 quackflight ships with the DuckDB SQL quack user-interface based on [ch-ui](https://github.com/caioricciuti/ch-ui)
 
