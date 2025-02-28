@@ -53,7 +53,7 @@ Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](ht
 
 ##### 🎫 Pass Airport Security
 ```sql
-CREATE SECRET airport_flight (
+CREATE PERSISTENT SECRET airport_flight (
 ·       type airport,
 ‣       auth_token 'user:persistence',
 ·       scope 'grpc://localhost:8815'
