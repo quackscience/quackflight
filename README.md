@@ -17,7 +17,7 @@ _Serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL
 
 <br>
 
-<img src="https://github.com/user-attachments/assets/deddab90-e409-4b1b-881f-d53f02597a1d" width=80 />
+![image](https://github.com/user-attachments/assets/67063370-8316-4aa5-b372-09bb20519bc0)
 
 ### :seedling: Get Started
 Run using [docker](https://github.com/quackscience/quackflight/pkgs/container/quackflight) or build from source
@@ -44,6 +44,8 @@ curl -X POST "http://user:persistence@localhost:8123" \
 ```
 
 <br>
+
+<img src="https://github.com/user-attachments/assets/deddab90-e409-4b1b-881f-d53f02597a1d" width=80 />
 
 #### ✈️ FLIGHT API
 Execute DuckDB queries using the _experimental_ Flight GRPC API and [Airport](https://github.com/Query-farm/duckdb-airport-extension)
@@ -115,7 +117,6 @@ D SELECT * FROM deltalake.test1.people;
 USE test1; SELECT * FROM people;
 ```
 ![image](https://github.com/user-attachments/assets/82d9c7bf-cbf2-49d3-b4dc-a57a0ddaf46a)
-
 
 ##### 🎫 Take Custom Flights w/ Custom Headers + Ticket
 ```sql
