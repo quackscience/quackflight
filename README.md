@@ -79,7 +79,7 @@ D select * from airport_take_flight('grpc://localhost:8815/', ['show_version']);
 │ "version"() │
 │   varchar   │
 ├─────────────┤
-│ v1.1.3      │
+│ v1.2.0      │
 └─────────────┘
 ```
 
@@ -153,7 +153,7 @@ print(data_frame.to_markdown())
 ```sql
 |    | "version"()   |
 |---:|:--------------|
-|  0 | v1.1.3        |
+|  0 | v1.2.0        |
 ```
 
 <br>
