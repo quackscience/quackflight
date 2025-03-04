@@ -125,7 +125,7 @@ def verify(username, password):
         logger.debug('Using stateless session')
         return True
     
-    logger.info(f"Using http auth: {username}:{password}")
+    logger.info(f"Using http auth: {username}:<password>")
     user_pass_hash = hashlib.sha256((username + password).encode()).hexdigest()
     # Just verify the connection exists/can be created
     connection_manager.get_connection(user_pass_hash)
