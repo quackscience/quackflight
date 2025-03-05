@@ -1,4 +1,6 @@
-<img src="https://github.com/user-attachments/assets/c204da32-71bc-45d7-a83d-e0e99ad169ab" width=250 />
+<!-- <img src="https://github.com/user-attachments/assets/c204da32-71bc-45d7-a83d-e0e99ad169ab" width=250 /> -->
+<img src="https://github.com/user-attachments/assets/48107bf8-c1f9-4a4e-a5fa-20882e2aba9d" width=250 />
+
 
 # :baby_chick: [QuackFlight](https://quackpy.fly.dev/?user=default#U0VMRUNUCiAgICB0b3duLAogICAgZGlzdHJpY3QsCiAgICBjb3VudCgpIEFTIGMsCkZST00gcmVhZF9wYXJxdWV0KCdodHRwczovL2RhdGFzZXRzLWRvY3VtZW50YXRpb24uczMuZXUtd2VzdC0zLmFtYXpvbmF3cy5jb20vaG91c2VfcGFycXVldC9ob3VzZV8wLnBhcnF1ZXQnKQpXSEVSRSByZWFkX3BhcnF1ZXQudG93biA9PSAnTE9ORE9OJwpHUk9VUCBCWQogICAgdG93biwKICAgIGRpc3RyaWN0Ck9SREVSIEJZIGMgREVTQwpMSU1JVCAxMA==)
 
@@ -17,7 +19,7 @@ _Serverless OLAP API built on top of DuckDB exposing HTTP/S and Arrow Flight SQL
 
 <br>
 
-![image](https://github.com/user-attachments/assets/67063370-8316-4aa5-b372-09bb20519bc0)
+![quackflight_banner_yellow](https://github.com/user-attachments/assets/3f55d787-7888-4647-a856-ba78111ed657)
 
 ### :seedling: Get Started
 Run using [docker](https://github.com/quackscience/quackflight/pkgs/container/quackflight) or build from source
